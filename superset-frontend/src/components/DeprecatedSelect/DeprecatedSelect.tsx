@@ -161,15 +161,13 @@ function styled<
       filterOption,
       ignoreAccents = false, // default is `true`, but it is slow
 
-      asText = (value: any) => String(value ?? ''),
-
       getOptionValue = option =>
         typeof option === 'string' ? option : option[valueKey],
 
       getOptionLabel = option =>
         typeof option === 'string'
           ? option
-          : asText(option[labelKey]) || asText(option[valueKey]),
+          : option[labelKey] || option[valueKey],
 
       formatOptionLabel = (
         option: OptionType,

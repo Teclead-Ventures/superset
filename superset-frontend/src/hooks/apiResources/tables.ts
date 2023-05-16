@@ -16,12 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { useCallback, useMemo, useEffect, useRef } from 'react';
-import useEffectEvent from 'src/hooks/useEffectEvent';
-import { api } from './queryApi';
+import { useRef, useMemo } from 'react';
+import { useQuery, UseQueryOptions } from 'react-query';
+import rison from 'rison';
+import { SupersetClient } from '@superset-ui/core';
 
 import { useSchemas } from './schemas';
 
+export type FetchTablesQueryParams = {
+  dbId?: string | number;
+  schema?: string;
+  forceRefresh?: boolean;
+};
 export interface Table {
   label: string;
   value: string;
@@ -35,7 +41,7 @@ export interface Table {
   };
 }
 
-type QueryResponse = {
+type QueryData = {
   json: {
     count: number;
     result: Table[];
@@ -48,44 +54,28 @@ export type Data = {
   hasMore: boolean;
 };
 
-export type FetchTablesQueryParams = {
-  dbId?: string | number;
-  schema?: string;
-  forceRefresh?: boolean;
-  onSuccess?: (data: Data, isRefetched: boolean) => void;
-  onError?: (error: Response) => void;
-};
+export function fetchTables({
+  dbId,
+  schema,
+  forceRefresh,
+}: FetchTablesQueryParams) {
+  const encodedSchema = schema ? encodeURIComponent(schema) : '';
+  const params = rison.encode({
+    force: forceRefresh,
+    schema_name: encodedSchema,
+  });
 
-type Params = Omit<FetchTablesQueryParams, 'forceRefresh'>;
+  // TODO: Would be nice to add pagination in a follow-up. Needs endpoint changes.
+  const endpoint = `/api/v1/database/${
+    dbId ?? 'undefined'
+  }/tables/?q=${params}`;
+  return SupersetClient.get({ endpoint }) as Promise<QueryData>;
+}
 
-const tableApi = api.injectEndpoints({
-  endpoints: builder => ({
-    tables: builder.query<Data, FetchTablesQueryParams>({
-      providesTags: ['Tables'],
-      query: ({ dbId, schema, forceRefresh }) => ({
-        endpoint: `/api/v1/database/${dbId ?? 'undefined'}/tables/`,
-        // TODO: Would be nice to add pagination in a follow-up. Needs endpoint changes.
-        urlParams: {
-          force: forceRefresh,
-          schema_name: schema ? encodeURIComponent(schema) : '',
-        },
-        transformResponse: ({ json }: QueryResponse) => ({
-          options: json.result,
-          hasMore: json.count > json.result.length,
-        }),
-      }),
-      serializeQueryArgs: ({ queryArgs: { dbId, schema } }) => ({
-        dbId,
-        schema,
-      }),
-    }),
-  }),
-});
-
-export const { useLazyTablesQuery, useTablesQuery } = tableApi;
+type Params = FetchTablesQueryParams &
+  Pick<UseQueryOptions<Data>, 'onSuccess' | 'onError'>;
 
 export function useTables(options: Params) {
-  const isMountedRef = useRef(false);
   const { data: schemaOptions, isFetching } = useSchemas({
     dbId: options.dbId,
   });
@@ -94,68 +84,32 @@ export function useTables(options: Params) {
     [schemaOptions],
   );
   const { dbId, schema, onSuccess, onError } = options || {};
-
-  const enabled = Boolean(
-    dbId && schema && !isFetching && schemaOptionsMap.has(schema),
-  );
-
-  const result = useTablesQuery(
-    { dbId, schema, forceRefresh: false },
+  const forceRefreshRef = useRef(false);
+  const params = { dbId, schema };
+  const result = useQuery<QueryData, Error, Data>(
+    ['tables', { dbId, schema }],
+    () => fetchTables({ ...params, forceRefresh: forceRefreshRef.current }),
     {
-      skip: !enabled,
+      select: ({ json }) => ({
+        options: json.result,
+        hasMore: json.count > json.result.length,
+      }),
+      enabled: Boolean(
+        dbId && schema && !isFetching && schemaOptionsMap.has(schema),
+      ),
+      onSuccess,
+      onError,
+      onSettled: () => {
+        forceRefreshRef.current = false;
+      },
     },
   );
-  const [trigger] = useLazyTablesQuery();
-
-  const handleOnSuccess = useEffectEvent((data: Data, isRefetched: boolean) => {
-    onSuccess?.(data, isRefetched);
-  });
-
-  const handleOnError = useEffectEvent((error: Response) => {
-    onError?.(error);
-  });
-
-  const refetch = useCallback(() => {
-    if (enabled) {
-      trigger({ dbId, schema, forceRefresh: true }).then(
-        ({ isSuccess, isError, data, error }) => {
-          if (isSuccess && data) {
-            handleOnSuccess(data, true);
-          }
-          if (isError) {
-            handleOnError(error as Response);
-          }
-        },
-      );
-    }
-  }, [dbId, schema, enabled, handleOnSuccess, handleOnError, trigger]);
-
-  useEffect(() => {
-    if (isMountedRef.current) {
-      const {
-        requestId,
-        isSuccess,
-        isError,
-        isFetching,
-        data,
-        error,
-        originalArgs,
-      } = result;
-      if (!originalArgs?.forceRefresh && requestId && !isFetching) {
-        if (isSuccess && data) {
-          handleOnSuccess(data, false);
-        }
-        if (isError) {
-          handleOnError(error as Response);
-        }
-      }
-    } else {
-      isMountedRef.current = true;
-    }
-  }, [result, handleOnSuccess, handleOnError]);
 
   return {
     ...result,
-    refetch,
+    refetch: () => {
+      forceRefreshRef.current = true;
+      return result.refetch();
+    },
   };
 }

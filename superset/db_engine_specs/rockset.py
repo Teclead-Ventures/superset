@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 
 class RocksetEngineSpec(BaseEngineSpec):
+
     engine = "rockset"
     engine_name = "Rockset"
 

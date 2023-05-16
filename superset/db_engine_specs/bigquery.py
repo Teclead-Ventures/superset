@@ -23,13 +23,11 @@ from typing import Any, Dict, List, Optional, Pattern, Tuple, Type, TYPE_CHECKIN
 import pandas as pd
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
-from deprecation import deprecated
 from flask_babel import gettext as __
 from marshmallow import fields, Schema
 from marshmallow.exceptions import ValidationError
 from sqlalchemy import column, types
 from sqlalchemy.engine.base import Engine
-from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
 from typing_extensions import TypedDict
 
@@ -40,25 +38,9 @@ from superset.databases.utils import make_url_safe
 from superset.db_engine_specs.base import BaseEngineSpec, BasicPropertiesType
 from superset.db_engine_specs.exceptions import SupersetDBAPIConnectionError
 from superset.errors import SupersetError, SupersetErrorType
-from superset.exceptions import SupersetException
 from superset.sql_parse import Table
 from superset.utils import core as utils
 from superset.utils.hashing import md5_sha_from_str
-
-try:
-    from google.cloud import bigquery
-    from google.oauth2 import service_account
-
-    dependencies_installed = True
-except ModuleNotFoundError:
-    dependencies_installed = False
-
-try:
-    import pandas_gbq
-
-    can_upload = True
-except ModuleNotFoundError:
-    can_upload = False
 
 if TYPE_CHECKING:
     from superset.models.core import Database  # pragma: no cover
@@ -93,7 +75,7 @@ ma_plugin = MarshmallowPlugin()
 class BigQueryParametersSchema(Schema):
     credentials_info = EncryptedString(
         required=False,
-        metadata={"description": "Contents of BigQuery JSON credentials."},
+        description="Contents of BigQuery JSON credentials.",
     )
     query = fields.Dict(required=False)
 
@@ -103,7 +85,7 @@ class BigQueryParametersType(TypedDict):
     query: Dict[str, Any]
 
 
-class BigQueryEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-methods
+class BigQueryEngineSpec(BaseEngineSpec):
     """Engine spec for Google's BigQuery
 
     As contributed by @mxmzdlv on issue #945"""
@@ -122,8 +104,6 @@ class BigQueryEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-met
     run_multiple_statements_as_one = True
 
     allows_hidden_cc_in_orderby = True
-
-    supports_catalog = True
 
     """
     https://www.python.org/dev/peps/pep-0249/#arraysize
@@ -279,7 +259,6 @@ class BigQueryEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-met
         return "_" + md5_sha_from_str(label)
 
     @classmethod
-    @deprecated(deprecated_in="3.0")
     def normalize_indexes(cls, indexes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Normalizes indexes for more consistency across db engines
@@ -297,26 +276,6 @@ class BigQueryEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-met
             if ix["column_names"]:
                 normalized_idxs.append(ix)
         return normalized_idxs
-
-    @classmethod
-    def get_indexes(
-        cls,
-        database: "Database",
-        inspector: Inspector,
-        table_name: str,
-        schema: Optional[str],
-    ) -> List[Dict[str, Any]]:
-        """
-        Get the indexes associated with the specified schema/table.
-
-        :param database: The database to inspect
-        :param inspector: The SQLAlchemy inspector
-        :param table_name: The table to inspect
-        :param schema: The schema to inspect
-        :returns: The indexes
-        """
-
-        return cls.normalize_indexes(inspector.get_indexes(table_name, schema))
 
     @classmethod
     def extra_table_metadata(
@@ -368,13 +327,20 @@ class BigQueryEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-met
         :param df: The dataframe with data to be uploaded
         :param to_sql_kwargs: The kwargs to be passed to pandas.DataFrame.to_sql` method
         """
-        if not can_upload:
-            raise SupersetException(
-                "Could not import libraries needed to upload data to BigQuery."
-            )
+
+        try:
+            # pylint: disable=import-outside-toplevel
+            import pandas_gbq
+            from google.oauth2 import service_account
+        except ImportError as ex:
+            raise Exception(
+                "Could not import libraries `pandas_gbq` or `google.oauth2`, which are "
+                "required to be installed in your environment in order "
+                "to upload data to BigQuery"
+            ) from ex
 
         if not table.schema:
-            raise SupersetException("The table schema must be defined")
+            raise Exception("The table schema must be defined")
 
         to_gbq_kwargs = {}
         with cls.get_engine(database) as engine:
@@ -401,21 +367,6 @@ class BigQueryEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-met
         pandas_gbq.to_gbq(df, **to_gbq_kwargs)
 
     @classmethod
-    def _get_client(cls, engine: Engine) -> Any:
-        """
-        Return the BigQuery client associated with an engine.
-        """
-        if not dependencies_installed:
-            raise SupersetException(
-                "Could not import libraries needed to connect to BigQuery."
-            )
-
-        credentials = service_account.Credentials.from_service_account_info(
-            engine.dialect.credentials_info
-        )
-        return bigquery.Client(credentials=credentials)
-
-    @classmethod
     def estimate_query_cost(
         cls,
         database: "Database",
@@ -433,7 +384,7 @@ class BigQueryEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-met
         """
         extra = database.get_extra() or {}
         if not cls.get_allow_cost_estimate(extra):
-            raise SupersetException("Database does not support cost estimation")
+            raise Exception("Database does not support cost estimation")
 
         parsed_query = sql_parse.ParsedQuery(sql)
         statements = parsed_query.get_statements()
@@ -445,36 +396,34 @@ class BigQueryEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-met
         return costs
 
     @classmethod
-    def get_catalog_names(
-        cls,
-        database: "Database",
-        inspector: Inspector,
-    ) -> List[str]:
-        """
-        Get all catalogs.
-
-        In BigQuery, a catalog is called a "project".
-        """
-        engine: Engine
-        with database.get_sqla_engine_with_context() as engine:
-            client = cls._get_client(engine)
-            projects = client.list_projects()
-
-        return sorted(project.project_id for project in projects)
-
-    @classmethod
     def get_allow_cost_estimate(cls, extra: Dict[str, Any]) -> bool:
         return True
 
     @classmethod
     def estimate_statement_cost(cls, statement: str, cursor: Any) -> Dict[str, Any]:
+        try:
+            # pylint: disable=import-outside-toplevel
+            # It's the only way to perfom a dry-run estimate cost
+            from google.cloud import bigquery
+            from google.oauth2 import service_account
+        except ImportError as ex:
+            raise Exception(
+                "Could not import libraries `pygibquery` or `google.oauth2`, which are "
+                "required to be installed in your environment in order "
+                "to upload data to BigQuery"
+            ) from ex
+
         with cls.get_engine(cursor) as engine:
-            client = cls._get_client(engine)
-            job_config = bigquery.QueryJobConfig(dry_run=True)
-            query_job = client.query(
-                statement,
-                job_config=job_config,
-            )  # Make an API request.
+            creds = engine.dialect.credentials_info
+
+        creds = service_account.Credentials.from_service_account_info(creds)
+        client = bigquery.Client(credentials=creds)
+        job_config = bigquery.QueryJobConfig(dry_run=True)
+
+        query_job = client.query(
+            statement,
+            job_config=job_config,
+        )  # Make an API request.
 
         # Format Bytes.
         # TODO: Humanize in case more db engine specs need to be added,

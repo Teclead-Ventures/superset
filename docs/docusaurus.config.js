@@ -247,14 +247,7 @@ const config = {
         darkTheme: darkCodeTheme,
       },
     }),
-  scripts: [
-    '/script/matomo.js',
-    {
-      src:
-        'https://www.bugherd.com/sidebarv2.js?apikey=enilpiu7bgexxsnoqfjtxa',
-      async: true,
-    },
-  ],
+  scripts: ['/script/matomo.js'],
 };
 
 module.exports = config;

@@ -107,6 +107,7 @@ describe('DatasourceEditor', () => {
     });
 
     userEvent.click(getToggles[0]);
+    screen.logTestingPlaygroundURL();
     const deleteButtons = screen.getAllByRole('button', {
       name: /delete item/i,
     });

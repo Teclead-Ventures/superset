@@ -18,14 +18,9 @@
  */
 import PropTypes from 'prop-types';
 import React from 'react';
-import {
-  ensureIsArray,
-  FeatureFlag,
-  logging,
-  styled,
-  t,
-} from '@superset-ui/core';
-import { isFeatureEnabled } from 'src/featureFlags';
+import { styled, logging, t, ensureIsArray } from '@superset-ui/core';
+
+import { isFeatureEnabled, FeatureFlag } from 'src/featureFlags';
 import { PLACEHOLDER_DATASOURCE } from 'src/dashboard/constants';
 import Loading from 'src/components/Loading';
 import { EmptyStateBig } from 'src/components/EmptyState';
@@ -64,6 +59,7 @@ const propTypes = {
   triggerRender: PropTypes.bool,
   force: PropTypes.bool,
   isFiltersInitialized: PropTypes.bool,
+  isDeactivatedViz: PropTypes.bool,
   // state
   chartAlert: PropTypes.string,
   chartStatus: PropTypes.string,
@@ -98,6 +94,7 @@ const defaultProps = {
   triggerRender: false,
   dashboardId: null,
   chartStackTrace: null,
+  isDeactivatedViz: false,
   force: false,
   isInView: true,
 };
@@ -112,10 +109,6 @@ const Styles = styled.div`
   }
 
   .slice_container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-
     height: ${p => p.height}px;
 
     .pivot_table tbody tr {
@@ -143,13 +136,25 @@ class Chart extends React.PureComponent {
   }
 
   componentDidMount() {
-    if (this.props.triggerQuery) {
+    // during migration, hold chart queries before user choose review or cancel
+    if (
+      this.props.triggerQuery &&
+      this.props.filterboxMigrationState !== 'UNDECIDED'
+    ) {
       this.runQuery();
     }
   }
 
   componentDidUpdate() {
-    if (this.props.triggerQuery) {
+    // during migration, hold chart queries before user choose review or cancel
+    if (
+      this.props.triggerQuery &&
+      this.props.filterboxMigrationState !== 'UNDECIDED'
+    ) {
+      // if the chart is deactivated (filter_box), only load once
+      if (this.props.isDeactivatedViz && this.props.queriesResponse) {
+        return;
+      }
       this.runQuery();
     }
   }
@@ -252,6 +257,7 @@ class Chart extends React.PureComponent {
       errorMessage,
       chartIsStale,
       queriesResponse = [],
+      isDeactivatedViz = false,
       width,
     } = this.props;
 
@@ -322,7 +328,7 @@ class Chart extends React.PureComponent {
               <Loading />
             )}
           </div>
-          {isLoading && <Loading />}
+          {isLoading && !isDeactivatedViz && <Loading />}
         </Styles>
       </ErrorBoundary>
     );

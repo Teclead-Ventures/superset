@@ -189,7 +189,7 @@ class ExtraCache:
         # pylint: disable=import-outside-toplevel
         from superset.views.utils import get_form_data
 
-        if has_request_context() and request.args.get(param):
+        if has_request_context() and request.args.get(param):  # type: ignore
             return request.args.get(param, default)
 
         form_data, _ = get_form_data()
@@ -654,6 +654,6 @@ def dataset_macro(
         "metrics": metrics if include_metrics else None,
         "columns": columns,
     }
-    sqla_query = dataset.get_query_str_extended(query_obj, mutate=False)
+    sqla_query = dataset.get_query_str_extended(query_obj)
     sql = sqla_query.sql
-    return f"(\n{sql}\n) AS dataset_{dataset_id}"
+    return f"({sql}) AS dataset_{dataset_id}"

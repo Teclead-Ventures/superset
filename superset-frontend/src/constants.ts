@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { t, DEFAULT_D3_FORMAT } from '@superset-ui/core';
+import { t } from '@superset-ui/core';
 
 import { BootstrapData, CommonBootstrapData } from './types/bootstrapTypes';
 
@@ -27,6 +27,10 @@ export const BOOL_TRUE_DISPLAY = 'True';
 export const BOOL_FALSE_DISPLAY = 'False';
 
 export const URL_PARAMS = {
+  migrationState: {
+    name: 'migration_state',
+    type: 'string',
+  },
   standalone: {
     name: 'standalone',
     type: 'number',
@@ -50,6 +54,10 @@ export const URL_PARAMS = {
   filterSet: {
     name: 'filter_set',
     type: 'string',
+  },
+  showFilters: {
+    name: 'show_filters',
+    type: 'boolean',
   },
   expandFilters: {
     name: 'expand_filters',
@@ -184,7 +192,6 @@ export const DEFAULT_COMMON_BOOTSTRAP_DATA: CommonBootstrapData = {
       color: '',
     },
   },
-  d3_format: DEFAULT_D3_FORMAT,
 };
 
 export const DEFAULT_BOOTSTRAP_DATA: BootstrapData = {

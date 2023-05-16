@@ -17,12 +17,11 @@
  * under the License.
  */
 import React from 'react';
-import fetchMock from 'fetch-mock';
-import { QueryFormData, SupersetClient } from '@superset-ui/core';
 import { render, screen, waitFor } from 'spec/helpers/testing-library';
 import { getMockStoreWithNativeFilters } from 'spec/fixtures/mockStore';
 import chartQueries, { sliceId } from 'spec/fixtures/mockChartQueries';
-import { supersetGetCache } from 'src/utils/cachedSupersetGet';
+import { QueryFormData, SupersetClient } from '@superset-ui/core';
+import fetchMock from 'fetch-mock';
 import DrillDetailPane from './DrillDetailPane';
 
 const chart = chartQueries[sliceId];
@@ -115,10 +114,7 @@ const fetchWithData = () => {
   });
 };
 
-afterEach(() => {
-  fetchMock.restore();
-  supersetGetCache.clear();
-});
+afterEach(fetchMock.restore);
 
 test('should render', async () => {
   fetchWithNoData();
@@ -184,7 +180,11 @@ test('should render the metadata bar', async () => {
 
 test('should render an error message when fails to load the metadata', async () => {
   fetchWithNoData();
-  fetchMock.get(DATASET_ENDPOINT, { status: 400 }, { overwriteRoutes: true });
+  fetchMock.get(
+    DATASET_ENDPOINT,
+    { status: 'error', error: 'Some error' },
+    { overwriteRoutes: true },
+  );
   setup();
   expect(
     await screen.findByText('There was an error loading the dataset metadata'),

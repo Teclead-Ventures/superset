@@ -24,7 +24,6 @@ import {
   useTheme,
   NO_TIME_RANGE,
   SupersetTheme,
-  useCSSTextTruncation,
 } from '@superset-ui/core';
 import Button from 'src/components/Button';
 import ControlHeader from 'src/explore/components/ControlHeader';
@@ -36,6 +35,7 @@ import { Tooltip } from 'src/components/Tooltip';
 import { useDebouncedEffect } from 'src/explore/exploreUtils';
 import { SLOW_DEBOUNCE } from 'src/constants';
 import { noOp } from 'src/utils/common';
+import { useCSSTextTruncation } from 'src/hooks/useTruncation';
 import ControlPopover from '../ControlPopover/ControlPopover';
 
 import { DateFilterControlProps, FrameType } from './types';

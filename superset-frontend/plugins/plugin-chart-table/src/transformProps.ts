@@ -119,7 +119,6 @@ const processColumns = memoizeOne(function processColumns(
       const isMetric = metricsSet.has(key) && isNumeric(key, records);
       const isPercentMetric = percentMetricsSet.has(key);
       const isTime = dataType === GenericDataType.TEMPORAL;
-      const isNumber = dataType === GenericDataType.NUMERIC;
       const savedFormat = columnFormats?.[key];
       const numberFormat = config.d3NumberFormat || savedFormat;
 
@@ -152,7 +151,7 @@ const processColumns = memoizeOne(function processColumns(
       } else if (isPercentMetric) {
         // percent metrics have a default format
         formatter = getNumberFormatter(numberFormat || PERCENT_3_POINT);
-      } else if (isMetric || (isNumber && numberFormat)) {
+      } else if (isMetric || numberFormat) {
         formatter = getNumberFormatter(numberFormat);
       }
       return {

@@ -315,7 +315,7 @@ export default function transformProps(
         }),
     },
     legend: {
-      ...getLegendProps(legendType, legendOrientation, showLegend, theme),
+      ...getLegendProps(legendType, legendOrientation, showLegend),
       data: keys,
     },
     graphic: showTotal
@@ -345,6 +345,5 @@ export default function transformProps(
     onContextMenu,
     refs,
     emitCrossFilters,
-    coltypeMapping,
   };
 }

@@ -18,10 +18,10 @@
  */
 import shortid from 'shortid';
 import rison from 'rison';
-import { FeatureFlag, SupersetClient, t } from '@superset-ui/core';
+import { SupersetClient, t } from '@superset-ui/core';
 import invert from 'lodash/invert';
 import mapKeys from 'lodash/mapKeys';
-import { isFeatureEnabled } from 'src/featureFlags';
+import { isFeatureEnabled, FeatureFlag } from 'src/featureFlags';
 
 import { now } from 'src/utils/dates';
 import {
@@ -32,8 +32,6 @@ import {
 } from 'src/components/MessageToasts/actions';
 import { getClientErrorObject } from 'src/utils/getClientErrorObject';
 import COMMON_ERR_MESSAGES from 'src/utils/errorMessages';
-import { LOG_ACTIONS_SQLLAB_FETCH_FAILED_QUERY } from 'src/logger/LogUtils';
-import { logEvent } from 'src/logger/actions';
 import { newQueryTabName } from '../utils/newQueryTabName';
 
 export const RESET_STATE = 'RESET_STATE';
@@ -50,6 +48,9 @@ export const EXPAND_TABLE = 'EXPAND_TABLE';
 export const COLLAPSE_TABLE = 'COLLAPSE_TABLE';
 export const QUERY_EDITOR_SETDB = 'QUERY_EDITOR_SETDB';
 export const QUERY_EDITOR_SET_SCHEMA = 'QUERY_EDITOR_SET_SCHEMA';
+export const QUERY_EDITOR_SET_SCHEMA_OPTIONS =
+  'QUERY_EDITOR_SET_SCHEMA_OPTIONS';
+export const QUERY_EDITOR_SET_TABLE_OPTIONS = 'QUERY_EDITOR_SET_TABLE_OPTIONS';
 export const QUERY_EDITOR_SET_TITLE = 'QUERY_EDITOR_SET_TITLE';
 export const QUERY_EDITOR_SET_AUTORUN = 'QUERY_EDITOR_SET_AUTORUN';
 export const QUERY_EDITOR_SET_SQL = 'QUERY_EDITOR_SET_SQL';
@@ -79,7 +80,6 @@ export const STOP_QUERY = 'STOP_QUERY';
 export const REQUEST_QUERY_RESULTS = 'REQUEST_QUERY_RESULTS';
 export const QUERY_SUCCESS = 'QUERY_SUCCESS';
 export const QUERY_FAILED = 'QUERY_FAILED';
-export const CLEAR_INACTIVE_QUERIES = 'CLEAR_INACTIVE_QUERIES';
 export const CLEAR_QUERY_RESULTS = 'CLEAR_QUERY_RESULTS';
 export const REMOVE_DATA_PREVIEW = 'REMOVE_DATA_PREVIEW';
 export const CHANGE_DATA_PREVIEW_ID = 'CHANGE_DATA_PREVIEW_ID';
@@ -184,20 +184,18 @@ export function estimateQueryCost(queryEditor) {
     const { dbId, schema, sql, selectedText, templateParams } =
       getUpToDateQuery(getState(), queryEditor);
     const requestSql = selectedText || sql;
-
-    const postPayload = {
-      database_id: dbId,
-      schema,
-      sql: requestSql,
-      template_params: JSON.parse(templateParams || '{}'),
-    };
-
+    const endpoint =
+      schema === null
+        ? `/superset/estimate_query_cost/${dbId}/`
+        : `/superset/estimate_query_cost/${dbId}/${schema}/`;
     return Promise.all([
       dispatch({ type: COST_ESTIMATE_STARTED, query: queryEditor }),
       SupersetClient.post({
-        endpoint: '/api/v1/sqllab/estimate/',
-        body: JSON.stringify(postPayload),
-        headers: { 'Content-Type': 'application/json' },
+        endpoint,
+        postPayload: {
+          sql: requestSql,
+          templateParams: JSON.parse(templateParams || '{}'),
+        },
       })
         .then(({ json }) =>
           dispatch({ type: COST_ESTIMATE_RETURNED, query: queryEditor, json }),
@@ -217,10 +215,6 @@ export function estimateQueryCost(queryEditor) {
         ),
     ]);
   };
-}
-
-export function clearInactiveQueries() {
-  return { type: CLEAR_INACTIVE_QUERIES };
 }
 
 export function startQuery(query) {
@@ -272,26 +266,6 @@ export function queryFailed(query, msg, link, errors) {
             postPayload: { latest_query_id: query.id },
           })
         : Promise.resolve();
-
-    const eventData = {
-      has_err: true,
-      start_offset: query.startDttm,
-      ts: new Date().getTime(),
-    };
-    errors?.forEach(({ error_type: errorType, extra }) => {
-      const messages = extra?.issue_codes?.map(({ message }) => message) || [
-        errorType,
-      ];
-      messages.forEach(message => {
-        dispatch(
-          logEvent(LOG_ACTIONS_SQLLAB_FETCH_FAILED_QUERY, {
-            ...eventData,
-            error_type: errorType,
-            error_details: message,
-          }),
-        );
-      });
-    });
 
     return (
       sync
@@ -948,6 +922,14 @@ export function queryEditorSetSchema(queryEditor, schema) {
   };
 }
 
+export function queryEditorSetSchemaOptions(queryEditor, options) {
+  return { type: QUERY_EDITOR_SET_SCHEMA_OPTIONS, queryEditor, options };
+}
+
+export function queryEditorSetTableOptions(queryEditor, options) {
+  return { type: QUERY_EDITOR_SET_TABLE_OPTIONS, queryEditor, options };
+}
+
 export function queryEditorSetAutorun(queryEditor, autorun) {
   return function (dispatch) {
     const sync = isFeatureEnabled(FeatureFlag.SQLLAB_BACKEND_PERSISTENCE)
@@ -1493,7 +1475,7 @@ export function createDatasourceStarted() {
   return { type: CREATE_DATASOURCE_STARTED };
 }
 export function createDatasourceSuccess(data) {
-  const datasource = `${data.id}__table`;
+  const datasource = `${data.table_id}__table`;
   return { type: CREATE_DATASOURCE_SUCCESS, datasource };
 }
 export function createDatasourceFailed(err) {
@@ -1503,18 +1485,9 @@ export function createDatasourceFailed(err) {
 export function createDatasource(vizOptions) {
   return dispatch => {
     dispatch(createDatasourceStarted());
-    const { dbId, schema, datasourceName, sql } = vizOptions;
     return SupersetClient.post({
-      endpoint: '/api/v1/dataset/',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        database: dbId,
-        schema,
-        sql,
-        table_name: datasourceName,
-        is_managed_externally: false,
-        external_url: null,
-      }),
+      endpoint: '/superset/sqllab_viz/',
+      postPayload: { data: vizOptions },
     })
       .then(({ json }) => {
         dispatch(createDatasourceSuccess(json));

@@ -19,19 +19,17 @@
 /* eslint camelcase: 0 */
 import React from 'react';
 import { Dispatch } from 'redux';
-import { isFeatureEnabled } from 'src/featureFlags';
-import rison from 'rison';
+import { SelectValue } from 'antd/lib/select';
 import { connect } from 'react-redux';
 import { withRouter, RouteComponentProps } from 'react-router-dom';
 import { InfoTooltipWithTrigger } from '@superset-ui/chart-controls';
 import {
   css,
-  DatasourceType,
-  FeatureFlag,
-  isDefined,
-  styled,
-  SupersetClient,
   t,
+  styled,
+  DatasourceType,
+  isDefined,
+  ensureIsArray,
 } from '@superset-ui/core';
 import { Input } from 'src/components/Input';
 import { Form, FormItem } from 'src/components/Form';
@@ -39,7 +37,7 @@ import Alert from 'src/components/Alert';
 import Modal from 'src/components/Modal';
 import { Radio } from 'src/components/Radio';
 import Button from 'src/components/Button';
-import { AsyncSelect } from 'src/components';
+import { Select } from 'src/components';
 import Loading from 'src/components/Loading';
 import { setSaveChartModalVisibility } from 'src/explore/actions/saveModalActions';
 import { SaveActionType } from 'src/explore/types';
@@ -52,6 +50,7 @@ interface SaveModalProps extends RouteComponentProps {
   actions: Record<string, any>;
   form_data?: Record<string, any>;
   userId: number;
+  dashboards: Array<any>;
   alert?: string;
   sliceName?: string;
   slice?: Record<string, any>;
@@ -62,14 +61,14 @@ interface SaveModalProps extends RouteComponentProps {
 }
 
 type SaveModalState = {
+  saveToDashboardId: number | string | null;
   newSliceName?: string;
+  newDashboardName?: string;
   datasetName: string;
   alert: string | null;
   action: SaveActionType;
   isLoading: boolean;
   saveStatus?: string | null;
-  vizType?: string;
-  dashboard?: { label: string; value: string | number };
 };
 
 export const StyledModal = styled(Modal)`
@@ -87,15 +86,14 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
   constructor(props: SaveModalProps) {
     super(props);
     this.state = {
+      saveToDashboardId: null,
       newSliceName: props.sliceName,
       datasetName: props.datasource?.name,
       alert: null,
       action: this.canOverwriteSlice() ? 'overwrite' : 'saveas',
       isLoading: false,
-      vizType: props.form_data?.viz_type,
-      dashboard: undefined,
     };
-    this.onDashboardChange = this.onDashboardChange.bind(this);
+    this.onDashboardSelectChange = this.onDashboardSelectChange.bind(this);
     this.onSliceNameChange = this.onSliceNameChange.bind(this);
     this.changeAction = this.changeAction.bind(this);
     this.saveOrOverwrite = this.saveOrOverwrite.bind(this);
@@ -105,8 +103,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
   }
 
   isNewDashboard(): boolean {
-    const { dashboard } = this.state;
-    return typeof dashboard?.value === 'string';
+    return !!(!this.state.saveToDashboardId && this.state.newDashboardName);
   }
 
   canOverwriteSlice(): boolean {
@@ -116,26 +113,30 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     );
   }
 
-  async componentDidMount() {
-    let { dashboardId } = this.props;
-    if (!dashboardId) {
-      const lastDashboard = sessionStorage.getItem(SK_DASHBOARD_ID);
-      dashboardId = lastDashboard && parseInt(lastDashboard, 10);
-    }
-    if (dashboardId) {
-      try {
-        const result = await this.loadDashboard(dashboardId);
-        if (result) {
-          this.setState({
-            dashboard: { label: result.dashboard_title, value: result.id },
-          });
-        }
-      } catch (error) {
-        this.props.actions.addDangerToast(
-          t('An error occurred while loading dashboard information.'),
-        );
+  componentDidMount() {
+    this.props.actions.fetchDashboards(this.props.userId).then(() => {
+      if (ensureIsArray(this.props.dashboards).length === 0) {
+        return;
       }
-    }
+      const dashboardIds = this.props.dashboards?.map(
+        dashboard => dashboard.value,
+      );
+      const lastDashboard = sessionStorage.getItem(SK_DASHBOARD_ID);
+      let recentDashboard = lastDashboard && parseInt(lastDashboard, 10);
+
+      if (this.props.dashboardId) {
+        recentDashboard = this.props.dashboardId;
+      }
+
+      if (
+        recentDashboard !== null &&
+        dashboardIds.indexOf(recentDashboard) !== -1
+      ) {
+        this.setState({
+          saveToDashboardId: recentDashboard,
+        });
+      }
+    });
   }
 
   handleDatasetNameChange = (e: React.FormEvent<HTMLInputElement>) => {
@@ -147,8 +148,11 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     this.setState({ newSliceName: event.target.value });
   }
 
-  onDashboardChange(dashboard: { label: string; value: string | number }) {
-    this.setState({ dashboard });
+  onDashboardSelectChange(selected: SelectValue) {
+    const newDashboardName = selected ? String(selected) : undefined;
+    const saveToDashboardId =
+      selected && typeof selected === 'number' ? selected : null;
+    this.setState({ saveToDashboardId, newDashboardName });
   }
 
   changeAction(action: SaveActionType) {
@@ -198,22 +202,19 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
       delete formData.url_params;
 
       let dashboard: DashboardGetResponse | null = null;
-      if (this.state.dashboard) {
-        let validId = this.state.dashboard.value;
-        if (this.isNewDashboard()) {
+      if (this.state.newDashboardName || this.state.saveToDashboardId) {
+        let saveToDashboardId = this.state.saveToDashboardId || null;
+        if (!this.state.saveToDashboardId) {
           const response = await this.props.actions.createDashboard(
-            this.state.dashboard.label,
+            this.state.newDashboardName,
           );
-          validId = response.id;
+          saveToDashboardId = response.id;
         }
 
-        try {
-          dashboard = await this.loadDashboard(validId as number);
-        } catch (error) {
-          this.props.actions.saveSliceFailed();
-          return;
-        }
-
+        const response = await this.props.actions.getDashboard(
+          saveToDashboardId,
+        );
+        dashboard = response.result;
         if (isDefined(dashboard) && isDefined(dashboard?.id)) {
           sliceDashboards = sliceDashboards.includes(dashboard.id)
             ? sliceDashboards
@@ -235,7 +236,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
           dashboard
             ? {
                 title: dashboard.dashboard_title,
-                new: this.isNewDashboard(),
+                new: !this.state.saveToDashboardId,
               }
             : null,
         );
@@ -246,7 +247,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
           dashboard
             ? {
                 title: dashboard.dashboard_title,
-                new: this.isNewDashboard(),
+                new: !this.state.saveToDashboardId,
               }
             : null,
         );
@@ -266,9 +267,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
 
       const searchParams = new URLSearchParams(window.location.search);
       searchParams.set('save_action', this.state.action);
-      if (this.state.action !== 'overwrite') {
-        searchParams.delete('form_data_key');
-      }
+      searchParams.delete('form_data_key');
       if (this.state.action === 'saveas') {
         searchParams.set('slice_id', value.id.toString());
       }
@@ -281,118 +280,76 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     }
   }
 
-  loadDashboard = async (id: number) => {
-    const response = await SupersetClient.get({
-      endpoint: `/api/v1/dashboard/${id}`,
-    });
-    return response.json.result;
-  };
+  renderSaveChartModal = () => {
+    const dashboardSelectValue =
+      this.state.saveToDashboardId || this.state.newDashboardName;
 
-  loadDashboards = async (search: string, page: number, pageSize: number) => {
-    const queryParams = rison.encode({
-      columns: ['id', 'dashboard_title'],
-      filters: [
-        {
-          col: 'dashboard_title',
-          opr: 'ct',
-          value: search,
-        },
-        {
-          col: 'owners',
-          opr: 'rel_m_m',
-          value: this.props.userId,
-        },
-      ],
-      page,
-      page_size: pageSize,
-      order_column: 'dashboard_title',
-    });
-
-    const { json } = await SupersetClient.get({
-      endpoint: `/api/v1/dashboard/?q=${queryParams}`,
-    });
-    const { result, count } = json;
-    return {
-      data: result.map(
-        (dashboard: { id: number; dashboard_title: string }) => ({
-          value: dashboard.id,
-          label: dashboard.dashboard_title,
-        }),
-      ),
-      totalCount: count,
-    };
-  };
-
-  renderSaveChartModal = () => (
-    <Form data-test="save-modal-body" layout="vertical">
-      {(this.state.alert || this.props.alert) && (
-        <Alert
-          type="warning"
-          message={this.state.alert || this.props.alert}
-          onClose={this.removeAlert}
-        />
-      )}
-      <FormItem data-test="radio-group">
-        <Radio
-          id="overwrite-radio"
-          disabled={!this.canOverwriteSlice()}
-          checked={this.state.action === 'overwrite'}
-          onChange={() => this.changeAction('overwrite')}
-          data-test="save-overwrite-radio"
-        >
-          {t('Save (Overwrite)')}
-        </Radio>
-        <Radio
-          id="saveas-radio"
-          data-test="saveas-radio"
-          checked={this.state.action === 'saveas'}
-          onChange={() => this.changeAction('saveas')}
-        >
-          {t('Save as...')}
-        </Radio>
-      </FormItem>
-      <hr />
-      <FormItem label={t('Chart name')} required>
-        <Input
-          name="new_slice_name"
-          type="text"
-          placeholder="Name"
-          value={this.state.newSliceName}
-          onChange={this.onSliceNameChange}
-          data-test="new-chart-name"
-        />
-      </FormItem>
-      {this.props.datasource?.type === 'query' && (
-        <FormItem label={t('Dataset Name')} required>
-          <InfoTooltipWithTrigger
-            tooltip={t('A reusable dataset will be saved with your chart.')}
-            placement="right"
+    return (
+      <Form data-test="save-modal-body" layout="vertical">
+        {(this.state.alert || this.props.alert) && (
+          <Alert
+            type="warning"
+            message={this.state.alert || this.props.alert}
+            onClose={this.removeAlert}
           />
+        )}
+        <FormItem data-test="radio-group">
+          <Radio
+            id="overwrite-radio"
+            disabled={!this.canOverwriteSlice()}
+            checked={this.state.action === 'overwrite'}
+            onChange={() => this.changeAction('overwrite')}
+            data-test="save-overwrite-radio"
+          >
+            {t('Save (Overwrite)')}
+          </Radio>
+          <Radio
+            id="saveas-radio"
+            data-test="saveas-radio"
+            checked={this.state.action === 'saveas'}
+            onChange={() => this.changeAction('saveas')}
+          >
+            {t('Save as...')}
+          </Radio>
+        </FormItem>
+        <hr />
+        <FormItem label={t('Chart name')} required>
           <Input
-            name="dataset_name"
+            name="new_slice_name"
             type="text"
-            placeholder="Dataset Name"
-            value={this.state.datasetName}
-            onChange={this.handleDatasetNameChange}
-            data-test="new-dataset-name"
+            placeholder="Name"
+            value={this.state.newSliceName}
+            onChange={this.onSliceNameChange}
+            data-test="new-chart-name"
           />
         </FormItem>
-      )}
-      {!(
-        isFeatureEnabled(FeatureFlag.DASHBOARD_NATIVE_FILTERS) &&
-        this.state.vizType === 'filter_box'
-      ) && (
+        {this.props.datasource?.type === 'query' && (
+          <FormItem label={t('Dataset Name')} required>
+            <InfoTooltipWithTrigger
+              tooltip={t('A reusable dataset will be saved with your chart.')}
+              placement="right"
+            />
+            <Input
+              name="dataset_name"
+              type="text"
+              placeholder="Dataset Name"
+              value={this.state.datasetName}
+              onChange={this.handleDatasetNameChange}
+              data-test="new-dataset-name"
+            />
+          </FormItem>
+        )}
         <FormItem
           label={t('Add to dashboard')}
           data-test="save-chart-modal-select-dashboard-form"
         >
-          <AsyncSelect
+          <Select
             allowClear
             allowNewOptions
             ariaLabel={t('Select a dashboard')}
-            options={this.loadDashboards}
-            onChange={this.onDashboardChange}
-            value={this.state.dashboard}
+            options={this.props.dashboards}
+            onChange={this.onDashboardSelectChange}
+            value={dashboardSelectValue || undefined}
             placeholder={
               <div>
                 <b>{t('Select')}</b>
@@ -403,9 +360,9 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
             }
           />
         </FormItem>
-      )}
-    </Form>
-  );
+      </Form>
+    );
+  };
 
   renderFooter = () => (
     <div data-test="save-modal-footer">
@@ -417,11 +374,9 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
         buttonSize="small"
         disabled={
           !this.state.newSliceName ||
-          !this.state.dashboard ||
+          (!this.state.saveToDashboardId && !this.state.newDashboardName) ||
           (this.props.datasource?.type !== DatasourceType.Table &&
-            !this.state.datasetName) ||
-          (isFeatureEnabled(FeatureFlag.DASHBOARD_NATIVE_FILTERS) &&
-            this.state.vizType === 'filter_box')
+            !this.state.datasetName)
         }
         onClick={() => this.saveOrOverwrite(true)}
       >

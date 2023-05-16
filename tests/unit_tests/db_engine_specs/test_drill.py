@@ -20,7 +20,6 @@ from datetime import datetime
 from typing import Optional
 
 import pytest
-from sqlalchemy.engine.url import make_url
 
 from tests.unit_tests.db_engine_specs.utils import assert_convert_dttm
 from tests.unit_tests.fixtures.common import dttm
@@ -36,7 +35,7 @@ def test_odbc_impersonation() -> None:
 
     from superset.db_engine_specs.drill import DrillEngineSpec
 
-    url = URL.create("drill+odbc")
+    url = URL("drill+odbc")
     username = "DoAsUser"
     url = DrillEngineSpec.get_url_for_impersonation(url, True, username)
     assert url.query["DelegationUID"] == username
@@ -52,7 +51,7 @@ def test_jdbc_impersonation() -> None:
 
     from superset.db_engine_specs.drill import DrillEngineSpec
 
-    url = URL.create("drill+jdbc")
+    url = URL("drill+jdbc")
     username = "DoAsUser"
     url = DrillEngineSpec.get_url_for_impersonation(url, True, username)
     assert url.query["impersonation_target"] == username
@@ -68,7 +67,7 @@ def test_sadrill_impersonation() -> None:
 
     from superset.db_engine_specs.drill import DrillEngineSpec
 
-    url = URL.create("drill+sadrill")
+    url = URL("drill+sadrill")
     username = "DoAsUser"
     url = DrillEngineSpec.get_url_for_impersonation(url, True, username)
     assert url.query["impersonation_target"] == username
@@ -86,7 +85,7 @@ def test_invalid_impersonation() -> None:
     from superset.db_engine_specs.drill import DrillEngineSpec
     from superset.db_engine_specs.exceptions import SupersetDBAPIProgrammingError
 
-    url = URL.create("drill+foobar")
+    url = URL("drill+foobar")
     username = "DoAsUser"
 
     with pytest.raises(SupersetDBAPIProgrammingError):
@@ -107,18 +106,3 @@ def test_convert_dttm(
     from superset.db_engine_specs.drill import DrillEngineSpec as spec
 
     assert_convert_dttm(spec, target_type, expected_result, dttm)
-
-
-def test_get_schema_from_engine_params() -> None:
-    """
-    Test ``get_schema_from_engine_params``.
-    """
-    from superset.db_engine_specs.drill import DrillEngineSpec
-
-    assert (
-        DrillEngineSpec.get_schema_from_engine_params(
-            make_url("drill+sadrill://localhost:8047/dfs/test?use_ssl=False"),
-            {},
-        )
-        == "dfs.test"
-    )

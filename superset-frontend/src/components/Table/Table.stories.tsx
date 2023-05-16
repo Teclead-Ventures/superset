@@ -404,7 +404,7 @@ export const ServerPagination: ComponentStory<typeof Table> = args => {
   const [data, setData] = useState(generateData(0, 5));
   const [loading, setLoading] = useState(false);
 
-  const handleChange: OnChangeFunction<BasicData> = (
+  const handleChange: OnChangeFunction = (
     pagination,
     filters,
     sorter,
@@ -610,7 +610,7 @@ const shoppingData: ShoppingData[] = [
   },
 ];
 
-export const HeaderRenderers: ComponentStory<typeof Table> = () => {
+export const HeaderRenderers: ComponentStory<typeof Table> = args => {
   const [orderDateFormatting, setOrderDateFormatting] = useState('formatted');
   const [priceLocale, setPriceLocale] = useState(LocaleCode.en_US);
   const shoppingColumns: ColumnsType<ShoppingData> = [
@@ -672,7 +672,7 @@ export const HeaderRenderers: ComponentStory<typeof Table> = () => {
   ];
 
   return (
-    <Table<ShoppingData>
+    <Table
       data={shoppingData}
       columns={shoppingColumns}
       size={TableSize.SMALL}

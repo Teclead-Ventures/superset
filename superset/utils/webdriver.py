@@ -103,9 +103,11 @@ def find_unexpected_errors(driver: WebDriver) -> List[str]:
                     f"arguments[0].innerHTML = '{error_as_html}'", alert_div
                 )
             except WebDriverException:
-                logger.exception("Failed to update error messages using alert_div")
+                logger.warning(
+                    "Failed to update error messages using alert_div", exc_info=True
+                )
     except WebDriverException:
-        logger.exception("Failed to capture unexpected errors")
+        logger.warning("Failed to capture unexpected errors", exc_info=True)
 
     return error_messages
 
@@ -140,7 +142,7 @@ class WebDriverProxy:
             options.add_argument(arg)
 
         kwargs.update(current_app.config["WEBDRIVER_CONFIGURATION"])
-        logger.debug("Init selenium driver")
+        logger.info("Init selenium driver")
 
         return driver_class(**kwargs)
 
@@ -176,53 +178,29 @@ class WebDriverProxy:
         sleep(selenium_headstart)
 
         try:
-            try:
-                # page didn't load
-                logger.debug(
-                    "Wait for the presence of %s at url: %s", element_name, url
-                )
-                element = WebDriverWait(driver, self._screenshot_locate_wait).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, element_name))
-                )
-            except TimeoutException as ex:
-                logger.exception("Selenium timed out requesting url %s", url)
-                raise ex
+            logger.debug("Wait for the presence of %s", element_name)
+            element = WebDriverWait(driver, self._screenshot_locate_wait).until(
+                EC.presence_of_element_located((By.CLASS_NAME, element_name))
+            )
 
-            try:
-                # chart containers didn't render
-                logger.debug("Wait for chart containers to draw at url: %s", url)
-                WebDriverWait(driver, self._screenshot_locate_wait).until(
-                    EC.visibility_of_all_elements_located(
-                        (By.CLASS_NAME, "slice_container")
-                    )
+            logger.debug("Wait for chart containers to draw")
+            WebDriverWait(driver, self._screenshot_locate_wait).until(
+                EC.visibility_of_all_elements_located(
+                    (By.CLASS_NAME, "slice_container")
                 )
-            except TimeoutException as ex:
-                logger.exception(
-                    "Selenium timed out waiting for chart containers to draw at url %s",
-                    url,
-                )
-                raise ex
+            )
 
-            try:
-                # charts took too long to load
-                logger.debug(
-                    "Wait for loading element of charts to be gone at url: %s", url
-                )
-                WebDriverWait(driver, self._screenshot_load_wait).until_not(
-                    EC.presence_of_all_elements_located((By.CLASS_NAME, "loading"))
-                )
-            except TimeoutException as ex:
-                logger.exception(
-                    "Selenium timed out waiting for charts to load at url %s", url
-                )
-                raise ex
+            logger.debug("Wait for loading element of charts to be gone")
+            WebDriverWait(driver, self._screenshot_load_wait).until_not(
+                EC.presence_of_all_elements_located((By.CLASS_NAME, "loading"))
+            )
 
             selenium_animation_wait = current_app.config[
                 "SCREENSHOT_SELENIUM_ANIMATION_WAIT"
             ]
             logger.debug("Wait %i seconds for chart animation", selenium_animation_wait)
             sleep(selenium_animation_wait)
-            logger.debug(
+            logger.info(
                 "Taking a PNG screenshot of url %s as user %s",
                 url,
                 user.username,
@@ -239,18 +217,17 @@ class WebDriverProxy:
                     )
 
             img = element.screenshot_as_png
+
         except TimeoutException:
-            # raise again for the finally block, but handled above
-            pass
+            logger.warning("Selenium timed out requesting url %s", url, exc_info=True)
         except StaleElementReferenceException:
-            logger.exception(
+            logger.error(
                 "Selenium got a stale element while requesting url %s",
                 url,
+                exc_info=True,
             )
-        except WebDriverException:
-            logger.exception(
-                "Encountered an unexpected error when requeating url %s", url
-            )
+        except WebDriverException as ex:
+            logger.error(ex, exc_info=True)
         finally:
             self.destroy(driver, current_app.config["SCREENSHOT_SELENIUM_RETRIES"])
         return img

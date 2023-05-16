@@ -35,7 +35,6 @@ import {
 import {
   legendSection,
   richTooltipSection,
-  seriesOrderSection,
   showValueSection,
 } from '../../../controls';
 
@@ -56,7 +55,7 @@ const {
 const config: ControlPanelConfig = {
   controlPanelSections: [
     sections.genericTime,
-    sections.echartsTimeSeriesQueryWithXAxisSort,
+    sections.echartsTimeSeriesQuery,
     sections.advancedAnalyticsControls,
     sections.annotationsAndLayersControls,
     sections.forecastIntervalControls,
@@ -65,7 +64,6 @@ const config: ControlPanelConfig = {
       label: t('Chart Options'),
       expanded: true,
       controlSetRows: [
-        ...seriesOrderSection,
         ['color_scheme'],
         [
           {

@@ -93,6 +93,7 @@ export interface DatabaseSelectorProps {
   onDbChange?: (db: DatabaseObject) => void;
   onEmptyResults?: (searchText?: string) => void;
   onSchemaChange?: (schema?: string) => void;
+  onSchemasLoad?: (schemas: Array<object>) => void;
   readOnly?: boolean;
   schema?: string;
   sqlLabMode?: boolean;
@@ -125,6 +126,7 @@ export default function DatabaseSelector({
   onDbChange,
   onEmptyResults,
   onSchemaChange,
+  onSchemasLoad,
   readOnly = false,
   schema,
   sqlLabMode = false,
@@ -223,13 +225,16 @@ export default function DatabaseSelector({
   const {
     data,
     isFetching: loadingSchemas,
+    isFetched,
     refetch,
   } = useSchemas({
     dbId: currentDb?.value,
-    onSuccess: (schemas, isFetched) => {
-      if (schemas.length === 1) {
-        changeSchema(schemas[0]);
-      } else if (!schemas.find(schemaOption => schema === schemaOption.value)) {
+    onSuccess: data => {
+      onSchemasLoad?.(data);
+
+      if (data.length === 1) {
+        changeSchema(data[0]);
+      } else if (!data.find(schemaOption => schema === schemaOption.value)) {
         changeSchema(undefined);
       }
 
@@ -268,7 +273,7 @@ export default function DatabaseSelector({
   function renderDatabaseSelect() {
     return renderSelectRow(
       <AsyncSelect
-        ariaLabel={t('Select database or type to search databases')}
+        ariaLabel={t('Select database or type database name')}
         optionFilterProps={['database_name', 'value']}
         data-test="select-database"
         header={<FormLabel>{t('Database')}</FormLabel>}
@@ -276,7 +281,7 @@ export default function DatabaseSelector({
         notFoundContent={emptyState}
         onChange={changeDataBase}
         value={currentDb}
-        placeholder={t('Select database or type to search databases')}
+        placeholder={t('Select database or type database name')}
         disabled={!isDatabaseSelectEnabled || readOnly}
         options={loadDatabases}
       />,
@@ -293,14 +298,14 @@ export default function DatabaseSelector({
     );
     return renderSelectRow(
       <Select
-        ariaLabel={t('Select schema or type to search schemas')}
+        ariaLabel={t('Select schema or type schema name')}
         disabled={!currentDb || readOnly}
         header={<FormLabel>{t('Schema')}</FormLabel>}
         labelInValue
         loading={loadingSchemas}
         name="select-schema"
         notFoundContent={t('No compatible schema found')}
-        placeholder={t('Select schema or type to search schemas')}
+        placeholder={t('Select schema or type schema name')}
         onChange={item => changeSchema(item as SchemaOption)}
         options={schemaOptions}
         showSearch

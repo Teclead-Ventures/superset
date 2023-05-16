@@ -17,7 +17,8 @@
  * under the License.
  */
 import React, { useMemo, useRef } from 'react';
-import { t, useTruncation } from '@superset-ui/core';
+import { t } from '@superset-ui/core';
+import { useTruncation } from 'src/hooks/useTruncation';
 import { useFilterScope } from './useFilterScope';
 import {
   Row,

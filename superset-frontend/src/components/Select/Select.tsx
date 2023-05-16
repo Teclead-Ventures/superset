@@ -83,7 +83,6 @@ const Select = forwardRef(
     {
       allowClear,
       allowNewOptions = false,
-      allowSelectAll = true,
       ariaLabel,
       filterOption = true,
       header = null,
@@ -196,17 +195,10 @@ const Select = forwardRef(
     const selectAllEnabled = useMemo(
       () =>
         !isSingleMode &&
-        allowSelectAll &&
         selectOptions.length > 0 &&
         enabledOptions.length > 1 &&
         !inputValue,
-      [
-        isSingleMode,
-        allowSelectAll,
-        selectOptions.length,
-        enabledOptions.length,
-        inputValue,
-      ],
+      [isSingleMode, selectOptions.length, enabledOptions.length, inputValue],
     );
 
     const selectAllMode = useMemo(
@@ -368,8 +360,9 @@ const Select = forwardRef(
     useEffect(() => {
       // if all values are selected, add select all to value
       if (
-        selectAllEnabled &&
-        ensureIsArray(value).length === selectAllEligible.length
+        !isSingleMode &&
+        ensureIsArray(value).length === selectAllEligible.length &&
+        selectOptions.length > 0
       ) {
         setSelectValue(
           labelInValue
@@ -380,7 +373,13 @@ const Select = forwardRef(
               ] as AntdLabeledValue[]),
         );
       }
-    }, [labelInValue, selectAllEligible.length, selectAllEnabled, value]);
+    }, [
+      value,
+      isSingleMode,
+      labelInValue,
+      selectAllEligible.length,
+      selectOptions.length,
+    ]);
 
     useEffect(() => {
       const checkSelectAll = ensureIsArray(selectValue).some(
@@ -456,7 +455,6 @@ const Select = forwardRef(
         <StyledSelect
           allowClear={!isLoading && allowClear}
           aria-label={ariaLabel || name}
-          autoClearSearchValue={false}
           dropdownRender={dropdownRender}
           filterOption={handleFilterOption}
           filterSort={sortComparatorWithSearch}

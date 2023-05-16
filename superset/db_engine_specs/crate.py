@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
 
 class CrateEngineSpec(BaseEngineSpec):
+
     engine = "crate"
     engine_name = "CrateDB"
 

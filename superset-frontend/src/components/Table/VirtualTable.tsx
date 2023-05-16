@@ -16,24 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-import AntTable, {
-  TablePaginationConfig,
-  TableProps as AntTableProps,
-} from 'antd/lib/table';
+import { Table as AntTable } from 'antd';
 import classNames from 'classnames';
 import { useResizeDetector } from 'react-resize-detector';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { VariableSizeGrid as Grid } from 'react-window';
+import { StyledComponent } from '@emotion/styled';
 import { useTheme, styled } from '@superset-ui/core';
+import { TablePaginationConfig } from 'antd/lib/table';
+import { TableProps, TableSize, ETableAction } from './index';
 
-import { TableSize, ETableAction } from './index';
-
-interface VirtualTableProps<RecordType> extends AntTableProps<RecordType> {
-  height?: number;
-}
-
-const StyledCell = styled('div')<{ height?: number }>(
+const StyledCell: StyledComponent<any> = styled('div')<any>(
   ({ theme, height }) => `
   white-space: nowrap;
   overflow: hidden;
@@ -47,7 +40,7 @@ const StyledCell = styled('div')<{ height?: number }>(
 `,
 );
 
-const StyledTable = styled(AntTable)<{ height?: number }>(
+const StyledTable: StyledComponent<any> = styled(AntTable)<any>(
   ({ theme }) => `
     th.ant-table-cell {
       font-weight: ${theme.typography.weights.bold};
@@ -68,9 +61,7 @@ const StyledTable = styled(AntTable)<{ height?: number }>(
 const SMALL = 39;
 const MIDDLE = 47;
 
-const VirtualTable = <RecordType extends object>(
-  props: VirtualTableProps<RecordType>,
-) => {
+const VirtualTable = (props: TableProps) => {
   const { columns, pagination, onChange, height, scroll, size } = props;
   const [tableWidth, setTableWidth] = useState<number>(0);
   const onResize = useCallback((width: number) => {
@@ -247,7 +238,7 @@ const VirtualTable = <RecordType extends object>(
         components={{
           body: renderVirtualList,
         }}
-        pagination={pagination ? modifiedPagination : false}
+        pagination={modifiedPagination}
       />
     </div>
   );

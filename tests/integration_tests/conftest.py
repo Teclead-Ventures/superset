@@ -134,7 +134,7 @@ def setup_sample_data() -> Any:
     yield
 
     with app.app_context():
-        # drop sqlalchemy tables
+        # drop sqlachemy tables
 
         db.session.commit()
         from sqlalchemy.ext import declarative

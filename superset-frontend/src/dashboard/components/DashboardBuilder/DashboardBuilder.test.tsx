@@ -21,8 +21,7 @@ import React from 'react';
 import fetchMock from 'fetch-mock';
 import { render } from 'spec/helpers/testing-library';
 import { fireEvent, within } from '@testing-library/react';
-import { FeatureFlag } from '@superset-ui/core';
-import { isFeatureEnabled } from 'src/featureFlags';
+import { FeatureFlag, isFeatureEnabled } from 'src/featureFlags';
 import DashboardBuilder from 'src/dashboard/components/DashboardBuilder/DashboardBuilder';
 import useStoredSidebarWidth from 'src/components/ResizableSidebar/useStoredSidebarWidth';
 import {
@@ -282,6 +281,7 @@ describe('DashboardBuilder', () => {
         dashboardInfo: {
           ...mockState.dashboardInfo,
           dash_edit_perm: true,
+          metadata: { show_native_filters: true },
         },
       });
       const filterbar = getByTestId('dashboard-filters-panel');

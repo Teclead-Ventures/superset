@@ -22,7 +22,7 @@ from unittest.mock import patch
 import pytest
 from flask_appbuilder.security.sqla.models import User
 from freezegun import freeze_time
-from freezegun.api import FakeDatetime
+from freezegun.api import FakeDatetime  # type: ignore
 
 from superset.extensions import db
 from superset.reports.models import ReportScheduleType
@@ -43,6 +43,7 @@ def test_scheduler_celery_timeout_ny(execute_mock, owners):
     Reports scheduler: Test scheduler setting celery soft and hard timeout
     """
     with app.app_context():
+
         report_schedule = insert_report_schedule(
             type=ReportScheduleType.ALERT,
             name="report",
@@ -90,6 +91,7 @@ def test_scheduler_celery_timeout_utc(execute_mock, owners):
     Reports scheduler: Test scheduler setting celery soft and hard timeout
     """
     with app.app_context():
+
         report_schedule = insert_report_schedule(
             type=ReportScheduleType.ALERT,
             name="report",

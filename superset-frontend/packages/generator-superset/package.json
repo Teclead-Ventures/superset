@@ -1,6 +1,6 @@
 {
   "name": "@superset-ui/generator-superset",
-  "version": "0.18.25",
+  "version": "2.1.0",
   "description": "Scaffolder for Superset",
   "keywords": [
     "yeoman",
@@ -14,8 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/apache/superset.git",
-    "directory": "superset-frontend/packages/generator-superset"
+    "url": "git+https://github.com/apache/superset.git"
   },
   "license": "Apache-2.0",
   "author": "Superset",

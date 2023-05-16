@@ -18,10 +18,9 @@
  */
 import React, { RefObject } from 'react';
 import {
+  BinaryQueryObjectFilterClause,
   ChartDataResponseResult,
   ChartProps,
-  ContextMenuFilters,
-  FilterState,
   HandlerFunction,
   PlainObject,
   QueryFormColumn,
@@ -29,7 +28,7 @@ import {
 } from '@superset-ui/core';
 import { EChartsCoreOption, ECharts } from 'echarts';
 import { TooltipMarker } from 'echarts/types/src/util/format';
-import { StackControlsValue } from './constants';
+import { AreaChartExtraControlsValue } from './constants';
 
 export type EchartsStylesProps = {
   height: number;
@@ -124,14 +123,10 @@ export interface BaseTransformedProps<F> {
   onContextMenu?: (
     clientX: number,
     clientY: number,
-    filters?: ContextMenuFilters,
+    filters?: BinaryQueryObjectFilterClause[],
   ) => void;
-  setDataMask?: SetDataMaskHook;
-  filterState?: FilterState;
   refs: Refs;
   width: number;
-  emitCrossFilters?: boolean;
-  coltypeMapping?: Record<string, number>;
 }
 
 export type CrossFilterTransformedProps = {
@@ -147,9 +142,8 @@ export type ContextMenuTransformedProps = {
   onContextMenu?: (
     clientX: number,
     clientY: number,
-    filters?: ContextMenuFilters,
+    filters?: BinaryQueryObjectFilterClause[],
   ) => void;
-  setDataMask?: SetDataMaskHook;
 };
 
 export interface TitleFormData {
@@ -160,7 +154,7 @@ export interface TitleFormData {
   yAxisTitlePosition: string;
 }
 
-export type StackType = boolean | null | Partial<StackControlsValue>;
+export type StackType = boolean | null | Partial<AreaChartExtraControlsValue>;
 
 export interface TreePathInfo {
   name: string;

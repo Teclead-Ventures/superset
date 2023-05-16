@@ -1,18 +1,17 @@
 {
   "name": "@superset-ui/legacy-plugin-chart-sunburst",
-  "version": "0.18.25",
+  "version": "2.1.0",
   "description": "Superset Legacy Chart - Sunburst",
   "keywords": [
     "superset"
   ],
-  "homepage": "https://github.com/apache/superset/tree/master/superset-frontend/plugins/legacy-plugin-chart-sunburst#readme",
+  "homepage": "https://github.com/apache-superset/superset-ui#readme",
   "bugs": {
-    "url": "https://github.com/apache/superset/issues"
+    "url": "https://github.com/apache-superset/superset-ui/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/apache/superset.git",
-    "directory": "superset-frontend/plugins/legacy-plugin-chart-sunburst"
+    "url": "git+https://github.com/apache-superset/superset-ui.git"
   },
   "license": "Apache-2.0",
   "author": "Superset",

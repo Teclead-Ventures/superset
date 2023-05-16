@@ -19,14 +19,6 @@
 import { t } from '@superset-ui/core';
 import getToastsFromPyFlashMessages from 'src/components/MessageToasts/getToastsFromPyFlashMessages';
 
-export function dedupeTabHistory(tabHistory) {
-  return tabHistory.reduce(
-    (result, tabId) =>
-      result.slice(-1)[0] === tabId ? result : result.concat(tabId),
-    [],
-  );
-}
-
 export default function getInitialState({
   defaultDbId,
   common,
@@ -113,7 +105,7 @@ export default function getInitialState({
   });
 
   const tabHistory = activeTab ? [activeTab.id.toString()] : [];
-  let tables = {};
+  const tables = [];
   if (activeTab) {
     activeTab.table_schemas
       .filter(tableSchema => tableSchema.description !== null)
@@ -146,10 +138,7 @@ export default function getInitialState({
           partitions,
           metadata,
         };
-        tables = {
-          ...tables,
-          [table.id]: table,
-        };
+        tables.push(table);
       });
   }
 
@@ -186,15 +175,8 @@ export default function getInitialState({
           },
         };
       });
-      tables = sqlLab.tables.reduce(
-        (merged, table) => ({
-          ...merged,
-          [table.id]: {
-            ...tables[table.id],
-            ...table,
-          },
-        }),
-        tables,
+      sqlLab.tables.forEach(table =>
+        tables.push({ ...table, inLocalStorage: true }),
       );
       Object.values(sqlLab.queries).forEach(query => {
         queries[query.id] = { ...query, inLocalStorage: true };
@@ -211,8 +193,8 @@ export default function getInitialState({
       offline: false,
       queries,
       queryEditors: Object.values(queryEditors),
-      tabHistory: dedupeTabHistory(tabHistory),
-      tables: Object.values(tables),
+      tabHistory,
+      tables,
       queriesLastUpdate: Date.now(),
       user,
       unsavedQueryEditor,

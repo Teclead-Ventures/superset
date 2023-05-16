@@ -23,6 +23,7 @@ import time
 from abc import ABCMeta
 from collections import defaultdict, deque
 from datetime import datetime
+from distutils.version import StrictVersion
 from textwrap import dedent
 from typing import (
     Any,
@@ -42,7 +43,6 @@ import pandas as pd
 import simplejson as json
 from flask import current_app
 from flask_babel import gettext as __, lazy_gettext as _
-from packaging.version import Version
 from sqlalchemy import Column, literal_column, types
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.reflection import Inspector
@@ -164,8 +164,6 @@ class PrestoBaseEngineSpec(BaseEngineSpec, metaclass=ABCMeta):
     """
     A base class that share common functions between Presto and Trino
     """
-
-    supports_dynamic_schema = True
 
     column_type_mappings = (
         (
@@ -301,44 +299,19 @@ class PrestoBaseEngineSpec(BaseEngineSpec, metaclass=ABCMeta):
         return "from_unixtime({col})"
 
     @classmethod
-    def adjust_engine_params(
-        cls,
-        uri: URL,
-        connect_args: Dict[str, Any],
-        catalog: Optional[str] = None,
-        schema: Optional[str] = None,
-    ) -> Tuple[URL, Dict[str, Any]]:
+    def adjust_database_uri(
+        cls, uri: URL, selected_schema: Optional[str] = None
+    ) -> URL:
         database = uri.database
-        if schema and database:
-            schema = parse.quote(schema, safe="")
+        if selected_schema and database:
+            selected_schema = parse.quote(selected_schema, safe="")
             if "/" in database:
-                database = database.split("/")[0] + "/" + schema
+                database = database.split("/")[0] + "/" + selected_schema
             else:
-                database += "/" + schema
+                database += "/" + selected_schema
             uri = uri.set(database=database)
 
-        return uri, connect_args
-
-    @classmethod
-    def get_schema_from_engine_params(
-        cls,
-        sqlalchemy_uri: URL,
-        connect_args: Dict[str, Any],
-    ) -> Optional[str]:
-        """
-        Return the configured schema.
-
-        For Presto the SQLAlchemy URI looks like this:
-
-            presto://localhost:8080/hive[/default]
-
-        """
-        database = sqlalchemy_uri.database.strip("/")
-
-        if "/" not in database:
-            return None
-
-        return parse.unquote(database.split("/")[1])
+        return uri
 
     @classmethod
     def estimate_statement_cost(cls, statement: str, cursor: Any) -> Dict[str, Any]:
@@ -423,30 +396,24 @@ class PrestoBaseEngineSpec(BaseEngineSpec, metaclass=ABCMeta):
         return database.get_df("SHOW FUNCTIONS")["Function"].tolist()
 
     @classmethod
-    def _partition_query(  # pylint: disable=too-many-arguments,too-many-locals,unused-argument
+    def _partition_query(  # pylint: disable=too-many-arguments,too-many-locals
         cls,
         table_name: str,
-        schema: Optional[str],
-        indexes: List[Dict[str, Any]],
         database: Database,
         limit: int = 0,
         order_by: Optional[List[Tuple[str, bool]]] = None,
         filters: Optional[Dict[Any, Any]] = None,
     ) -> str:
-        """
-        Return a partition query.
-
-        Note the unused arguments are exposed for sub-classing purposes where custom
-        integrations may require the schema, indexes, etc. to build the partition query.
+        """Returns a partition query
 
         :param table_name: the name of the table to get partitions from
-        :param schema: the schema name
-        :param indexes: the indexes associated with the table
-        :param database: the database the query will be run against
+        :type table_name: str
         :param limit: the number of partitions to be returned
+        :type limit: int
         :param order_by: a list of tuples of field name and a boolean
             that determines if that field should be sorted in descending
             order
+        :type order_by: list of (str, bool) tuples
         :param filters: dict of field name and filter value combinations
         """
         limit_clause = "LIMIT {}".format(limit) if limit else ""
@@ -470,7 +437,8 @@ class PrestoBaseEngineSpec(BaseEngineSpec, metaclass=ABCMeta):
         # Default to the new syntax if version is unset.
         partition_select_clause = (
             f'SELECT * FROM "{table_name}$partitions"'
-            if not presto_version or Version(presto_version) >= Version("0.199")
+            if not presto_version
+            or StrictVersion(presto_version) >= StrictVersion("0.199")
             else f"SHOW PARTITIONS FROM {table_name}"
         )
 
@@ -566,20 +534,10 @@ class PrestoBaseEngineSpec(BaseEngineSpec, metaclass=ABCMeta):
             )
 
         column_names = indexes[0]["column_names"]
-
-        return column_names, cls._latest_partition_from_df(
-            df=database.get_df(
-                sql=cls._partition_query(
-                    table_name,
-                    schema,
-                    indexes,
-                    database,
-                    limit=1,
-                    order_by=[(column_name, True) for column_name in column_names],
-                ),
-                schema=schema,
-            )
-        )
+        part_fields = [(column_name, True) for column_name in column_names]
+        sql = cls._partition_query(table_name, database, 1, part_fields)
+        df = database.get_df(sql, schema)
+        return column_names, cls._latest_partition_from_df(df)
 
     @classmethod
     def latest_sub_partition(
@@ -627,13 +585,7 @@ class PrestoBaseEngineSpec(BaseEngineSpec, metaclass=ABCMeta):
                 field_to_return = field
 
         sql = cls._partition_query(
-            table_name,
-            schema,
-            indexes,
-            database,
-            limit=1,
-            order_by=[(field_to_return, True)],
-            filters=kwargs,
+            table_name, database, 1, [(field_to_return, True)], kwargs
         )
         df = database.get_df(sql, schema)
         if df.empty:
@@ -704,7 +656,7 @@ class PrestoEngineSpec(PrestoBaseEngineSpec):
     @classmethod
     def get_allow_cost_estimate(cls, extra: Dict[str, Any]) -> bool:
         version = extra.get("version")
-        return version is not None and Version(version) >= Version("0.319")
+        return version is not None and StrictVersion(version) >= StrictVersion("0.319")
 
     @classmethod
     def update_impersonation_config(
@@ -805,17 +757,6 @@ class PrestoEngineSpec(PrestoBaseEngineSpec):
             cursor.execute(sql, params)
             results = cursor.fetchall()
             return {row[0] for row in results}
-
-    @classmethod
-    def get_catalog_names(
-        cls,
-        database: Database,
-        inspector: Inspector,
-    ) -> List[str]:
-        """
-        Get all catalogs.
-        """
-        return [catalog for (catalog,) in inspector.bind.execute("SHOW CATALOGS")]
 
     @classmethod
     def _create_column_info(
@@ -1227,8 +1168,6 @@ class PrestoEngineSpec(PrestoBaseEngineSpec):
                         if schema_name and "." not in table_name
                         else table_name
                     ),
-                    schema=schema_name,
-                    indexes=indexes,
                     database=database,
                 ),
             }
@@ -1328,10 +1267,10 @@ class PrestoEngineSpec(PrestoBaseEngineSpec):
     def _extract_error_message(cls, ex: Exception) -> str:
         if (
             hasattr(ex, "orig")
-            and type(ex.orig).__name__ == "DatabaseError"
-            and isinstance(ex.orig[0], dict)
+            and type(ex.orig).__name__ == "DatabaseError"  # type: ignore
+            and isinstance(ex.orig[0], dict)  # type: ignore
         ):
-            error_dict = ex.orig[0]
+            error_dict = ex.orig[0]  # type: ignore
             return "{} at {}: {}".format(
                 error_dict.get("errorName"),
                 error_dict.get("errorLocation"),

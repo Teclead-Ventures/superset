@@ -18,9 +18,9 @@
 import json
 
 import pandas as pd
-import pytest
 from flask_babel import lazy_gettext as _
 from numpy import True_
+from pytest import raises
 from sqlalchemy.orm.session import Session
 
 from superset.charts.post_processing import apply_post_process, pivot_df, table
@@ -1389,7 +1389,7 @@ def test_apply_post_process_without_result_format():
     result = {"queries": [{"result_format": "foo"}]}
     form_data = {"viz_type": "pivot_table"}
 
-    with pytest.raises(Exception) as ex:
+    with raises(Exception) as ex:
         apply_post_process(result, form_data)
 
     assert ex.match("Result format foo not supported") == True
@@ -1659,13 +1659,12 @@ def test_apply_post_process_csv_format_empty_string():
     }
 
 
-@pytest.mark.parametrize("data", [None, "", "\n"])
-def test_apply_post_process_csv_format_no_data(data):
+def test_apply_post_process_csv_format_no_data():
     """
     It should be able to process csv results with no data
     """
 
-    result = {"queries": [{"result_format": ChartDataResultFormat.CSV, "data": data}]}
+    result = {"queries": [{"result_format": ChartDataResultFormat.CSV, "data": None}]}
     form_data = {
         "datasource": "19__table",
         "viz_type": "pivot_table_v2",
@@ -1727,7 +1726,7 @@ def test_apply_post_process_csv_format_no_data(data):
     }
 
     assert apply_post_process(result, form_data) == {
-        "queries": [{"result_format": ChartDataResultFormat.CSV, "data": data}]
+        "queries": [{"result_format": ChartDataResultFormat.CSV, "data": None}]
     }
 
 

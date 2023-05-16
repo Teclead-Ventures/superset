@@ -1,18 +1,17 @@
 {
   "name": "@superset-ui/chart-controls",
-  "version": "0.18.25",
+  "version": "2.1.0",
   "description": "Superset UI control-utils",
   "keywords": [
     "superset"
   ],
-  "homepage": "https://github.com/apache/superset/tree/master/superset-frontend/packages/superset-ui-chart-controls#readme",
+  "homepage": "https://github.com/apache-superset/superset-ui#readme",
   "bugs": {
-    "url": "https://github.com/apache/superset/issues"
+    "url": "https://github.com/apache-superset/superset-ui/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/apache/superset.git",
-    "directory": "superset-frontend/packages/superset-ui-chart-controls"
+    "url": "git+https://github.com/apache-superset/superset-ui.git"
   },
   "license": "Apache-2.0",
   "author": "Superset",
@@ -31,7 +30,7 @@
     "prop-types": "^15.7.2"
   },
   "peerDependencies": {
-    "@ant-design/icons": "^5.0.1",
+    "@ant-design/icons": "^4.2.2",
     "@emotion/react": "^11.4.1",
     "@superset-ui/core": "*",
     "@testing-library/dom": "^7.29.4",

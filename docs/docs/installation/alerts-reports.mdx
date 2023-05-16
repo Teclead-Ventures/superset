@@ -30,7 +30,7 @@ Alerts and reports are disabled by default. To turn them on, you need to do some
 
 ###### Disable dry-run mode
 
-Screenshots will be taken but no messages actually sent as long as `ALERT_REPORTS_NOTIFICATION_DRY_RUN = True`, its default value in `docker/pythonpath_dev/superset_config.py`.  To disable dry-run mode and start receiving email/Slack notifications, set `ALERT_REPORTS_NOTIFICATION_DRY_RUN` to `False` in [superset config](https://github.com/apache/superset/blob/master/docker/pythonpath_dev/superset_config.py).
+Screenshots will be taken but no messages actually sent as long as `ALERT_REPORTS_NOTIFICATION_DRY_RUN = True`, its default value in `config.py`.  To disable dry-run mode and start receiving email/Slack notifications, set `ALERT_REPORTS_NOTIFICATION_DRY_RUN` to `False` in [superset config](https://github.com/apache/superset/blob/master/docker/pythonpath_dev/superset_config.py).
 
 ##### In your `Dockerfile`
 
@@ -100,7 +100,7 @@ FEATURE_FLAGS = {
     "ALERT_REPORTS": True
 }
 
-REDIS_HOST = "superset_cache"
+REDIS_HOST = "redis-superset"
 REDIS_PORT = "6379"
 
 class CeleryConfig:
@@ -193,15 +193,15 @@ creator if either is contained within the list of owners, otherwise the first ow
 will be used) and finally `THUMBNAIL_SELENIUM_USER`, set as follows:
 
 ```python
-from superset.tasks.types import ExecutorType
+from superset.reports.types import ReportScheduleExecutor
 
 ALERT_REPORTS_EXECUTE_AS = [
-    ExecutorType.CREATOR_OWNER,
-    ExecutorType.CREATOR,
-    ExecutorType.MODIFIER_OWNER,
-    ExecutorType.MODIFIER,
-    ExecutorType.OWNER,
-    ExecutorType.SELENIUM,
+    ReportScheduleExecutor.CREATOR_OWNER,
+    ReportScheduleExecutor.CREATOR,
+    ReportScheduleExecutor.MODIFIER_OWNER,
+    ReportScheduleExecutor.MODIFIER,
+    ReportScheduleExecutor.OWNER,
+    ReportScheduleExecutor.SELENIUM,
 ]
 ```
 

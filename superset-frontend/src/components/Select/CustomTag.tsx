@@ -18,7 +18,8 @@
  */
 import React from 'react';
 import { Tag as AntdTag } from 'antd';
-import { styled, useCSSTextTruncation } from '@superset-ui/core';
+import { styled } from '@superset-ui/core';
+import { useCSSTextTruncation } from 'src/hooks/useTruncation';
 import { Tooltip } from '../Tooltip';
 import { CustomTagProps } from './types';
 import { SELECT_ALL_VALUE } from './utils';

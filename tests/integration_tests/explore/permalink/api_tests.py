@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 import json
+import pickle
 from typing import Any, Dict, Iterator
 from uuid import uuid3
 
@@ -23,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from superset import db
 from superset.key_value.models import KeyValueEntry
-from superset.key_value.types import JsonKeyValueCodec, KeyValueResource
+from superset.key_value.types import KeyValueResource
 from superset.key_value.utils import decode_permalink_id, encode_permalink_key
 from superset.models.slice import Slice
 from superset.utils.core import DatasourceType
@@ -67,7 +68,7 @@ def permalink_salt() -> Iterator[str]:
 
 
 def test_post(
-    form_data: Dict[str, Any], permalink_salt: str, test_client, login_as_admin
+    test_client, login_as_admin, form_data: Dict[str, Any], permalink_salt: str
 ):
     resp = test_client.post(f"api/v1/explore/permalink", json={"formData": form_data})
     assert resp.status_code == 201
@@ -80,21 +81,21 @@ def test_post(
     db.session.commit()
 
 
-def test_post_access_denied(form_data, test_client, login_as):
+def test_post_access_denied(test_client, login_as, form_data):
     login_as("gamma")
     resp = test_client.post(f"api/v1/explore/permalink", json={"formData": form_data})
     assert resp.status_code == 403
 
 
 def test_get_missing_chart(
-    chart, permalink_salt: str, test_client, login_as_admin
+    test_client, login_as_admin, chart, permalink_salt: str
 ) -> None:
     from superset.key_value.models import KeyValueEntry
 
     chart_id = 1234
     entry = KeyValueEntry(
         resource=KeyValueResource.EXPLORE_PERMALINK,
-        value=JsonKeyValueCodec().encode(
+        value=pickle.dumps(
             {
                 "chartId": chart_id,
                 "datasourceId": chart.datasource.id,
@@ -121,7 +122,7 @@ def test_post_invalid_schema(test_client, login_as_admin) -> None:
 
 
 def test_get(
-    form_data: Dict[str, Any], permalink_salt: str, test_client, login_as_admin
+    test_client, login_as_admin, form_data: Dict[str, Any], permalink_salt: str
 ) -> None:
     resp = test_client.post(f"api/v1/explore/permalink", json={"formData": form_data})
     data = json.loads(resp.data.decode("utf-8"))

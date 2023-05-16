@@ -44,7 +44,7 @@ class BaseDAO:
     """
     base_filter: Optional[BaseFilter] = None
     """
-    Child classes can register base filtering to be applied to all filter methods
+    Child classes can register base filtering to be aplied to all filter methods
     """
     id_column_name = "id"
 
@@ -194,14 +194,3 @@ class BaseDAO:
             db.session.rollback()
             raise DAODeleteFailedError(exception=ex) from ex
         return model
-
-    @classmethod
-    def bulk_delete(cls, models: List[Model], commit: bool = True) -> None:
-        try:
-            for model in models:
-                cls.delete(model, False)
-            if commit:
-                db.session.commit()
-        except SQLAlchemyError as ex:
-            db.session.rollback()
-            raise DAODeleteFailedError(exception=ex) from ex

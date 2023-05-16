@@ -29,7 +29,7 @@ import Button from 'src/components/Button';
 import { exploreChart } from 'src/explore/exploreUtils';
 import { SqlLabRootState } from 'src/SqlLab/types';
 
-export interface ExploreCtasResultsButtonProps {
+interface ExploreCtasResultsButtonProps {
   table: string;
   schema?: string | null;
   dbId: number;

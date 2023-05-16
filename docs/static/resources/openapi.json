@@ -1783,20 +1783,11 @@
           "changed_on_delta_humanized": {
             "readOnly": true
           },
-          "changed_on_dttm": {
-            "readOnly": true
-          },
           "changed_on_utc": {
             "readOnly": true
           },
           "created_by": {
             "$ref": "#/components/schemas/ChartDataRestApi.get_list.User2"
-          },
-          "created_by_name": {
-            "readOnly": true
-          },
-          "created_by_url": {
-            "readOnly": true
           },
           "created_on_delta_humanized": {
             "readOnly": true
@@ -1830,9 +1821,6 @@
           "edit_url": {
             "readOnly": true
           },
-          "form_data": {
-            "readOnly": true
-          },
           "id": {
             "format": "int32",
             "type": "integer"
@@ -1846,10 +1834,10 @@
             "type": "string"
           },
           "last_saved_by": {
-            "$ref": "#/components/schemas/ChartDataRestApi.get_list.User1"
+            "$ref": "#/components/schemas/ChartDataRestApi.get_list.User3"
           },
           "owners": {
-            "$ref": "#/components/schemas/ChartDataRestApi.get_list.User3"
+            "$ref": "#/components/schemas/ChartDataRestApi.get_list.User1"
           },
           "params": {
             "nullable": true,
@@ -1859,9 +1847,6 @@
             "maxLength": 250,
             "nullable": true,
             "type": "string"
-          },
-          "slice_url": {
-            "readOnly": true
           },
           "table": {
             "$ref": "#/components/schemas/ChartDataRestApi.get_list.SqlaTable"
@@ -1940,11 +1925,16 @@
           "last_name": {
             "maxLength": 64,
             "type": "string"
+          },
+          "username": {
+            "maxLength": 64,
+            "type": "string"
           }
         },
         "required": [
           "first_name",
-          "last_name"
+          "last_name",
+          "username"
         ],
         "type": "object"
       },
@@ -1982,16 +1972,11 @@
           "last_name": {
             "maxLength": 64,
             "type": "string"
-          },
-          "username": {
-            "maxLength": 64,
-            "type": "string"
           }
         },
         "required": [
           "first_name",
-          "last_name",
-          "username"
+          "last_name"
         ],
         "type": "object"
       },
@@ -2591,20 +2576,11 @@
           "changed_on_delta_humanized": {
             "readOnly": true
           },
-          "changed_on_dttm": {
-            "readOnly": true
-          },
           "changed_on_utc": {
             "readOnly": true
           },
           "created_by": {
             "$ref": "#/components/schemas/ChartRestApi.get_list.User2"
-          },
-          "created_by_name": {
-            "readOnly": true
-          },
-          "created_by_url": {
-            "readOnly": true
           },
           "created_on_delta_humanized": {
             "readOnly": true
@@ -2638,9 +2614,6 @@
           "edit_url": {
             "readOnly": true
           },
-          "form_data": {
-            "readOnly": true
-          },
           "id": {
             "format": "int32",
             "type": "integer"
@@ -2654,10 +2627,10 @@
             "type": "string"
           },
           "last_saved_by": {
-            "$ref": "#/components/schemas/ChartRestApi.get_list.User1"
+            "$ref": "#/components/schemas/ChartRestApi.get_list.User3"
           },
           "owners": {
-            "$ref": "#/components/schemas/ChartRestApi.get_list.User3"
+            "$ref": "#/components/schemas/ChartRestApi.get_list.User1"
           },
           "params": {
             "nullable": true,
@@ -2667,9 +2640,6 @@
             "maxLength": 250,
             "nullable": true,
             "type": "string"
-          },
-          "slice_url": {
-            "readOnly": true
           },
           "table": {
             "$ref": "#/components/schemas/ChartRestApi.get_list.SqlaTable"
@@ -2748,11 +2718,16 @@
           "last_name": {
             "maxLength": 64,
             "type": "string"
+          },
+          "username": {
+            "maxLength": 64,
+            "type": "string"
           }
         },
         "required": [
           "first_name",
-          "last_name"
+          "last_name",
+          "username"
         ],
         "type": "object"
       },
@@ -2790,16 +2765,11 @@
           "last_name": {
             "maxLength": 64,
             "type": "string"
-          },
-          "username": {
-            "maxLength": 64,
-            "type": "string"
           }
         },
         "required": [
           "first_name",
-          "last_name",
-          "username"
+          "last_name"
         ],
         "type": "object"
       },
@@ -3450,7 +3420,7 @@
             "readOnly": true
           },
           "created_by": {
-            "$ref": "#/components/schemas/DashboardRestApi.get_list.User1"
+            "$ref": "#/components/schemas/DashboardRestApi.get_list.User2"
           },
           "created_on_delta_humanized": {
             "readOnly": true
@@ -3476,7 +3446,7 @@
             "type": "string"
           },
           "owners": {
-            "$ref": "#/components/schemas/DashboardRestApi.get_list.User2"
+            "$ref": "#/components/schemas/DashboardRestApi.get_list.User1"
           },
           "position_json": {
             "nullable": true,
@@ -3550,27 +3520,6 @@
       },
       "DashboardRestApi.get_list.User1": {
         "properties": {
-          "first_name": {
-            "maxLength": 64,
-            "type": "string"
-          },
-          "id": {
-            "format": "int32",
-            "type": "integer"
-          },
-          "last_name": {
-            "maxLength": 64,
-            "type": "string"
-          }
-        },
-        "required": [
-          "first_name",
-          "last_name"
-        ],
-        "type": "object"
-      },
-      "DashboardRestApi.get_list.User2": {
-        "properties": {
           "email": {
             "maxLength": 64,
             "type": "string"
@@ -3597,6 +3546,27 @@
           "first_name",
           "last_name",
           "username"
+        ],
+        "type": "object"
+      },
+      "DashboardRestApi.get_list.User2": {
+        "properties": {
+          "first_name": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "id": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "last_name": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "first_name",
+          "last_name"
         ],
         "type": "object"
       },
@@ -4323,18 +4293,6 @@
         },
         "type": "object"
       },
-      "DatabaseSchemaAccessForFileUploadResponse": {
-        "properties": {
-          "schemas": {
-            "description": "The list of schemas allowed for the database to upload information",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "type": "object"
-      },
       "DatabaseTablesResponse": {
         "properties": {
           "extra": {
@@ -4959,7 +4917,7 @@
             "$ref": "#/components/schemas/DatasetRestApi.get.TableColumn"
           },
           "created_by": {
-            "$ref": "#/components/schemas/DatasetRestApi.get.User1"
+            "$ref": "#/components/schemas/DatasetRestApi.get.User2"
           },
           "created_on": {
             "format": "date-time",
@@ -5023,7 +4981,7 @@
             "type": "integer"
           },
           "owners": {
-            "$ref": "#/components/schemas/DatasetRestApi.get.User2"
+            "$ref": "#/components/schemas/DatasetRestApi.get.User1"
           },
           "schema": {
             "maxLength": 255,
@@ -5237,23 +5195,6 @@
             "maxLength": 64,
             "type": "string"
           },
-          "last_name": {
-            "maxLength": 64,
-            "type": "string"
-          }
-        },
-        "required": [
-          "first_name",
-          "last_name"
-        ],
-        "type": "object"
-      },
-      "DatasetRestApi.get.User2": {
-        "properties": {
-          "first_name": {
-            "maxLength": 64,
-            "type": "string"
-          },
           "id": {
             "format": "int32",
             "type": "integer"
@@ -5271,6 +5212,23 @@
           "first_name",
           "last_name",
           "username"
+        ],
+        "type": "object"
+      },
+      "DatasetRestApi.get.User2": {
+        "properties": {
+          "first_name": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "last_name": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "first_name",
+          "last_name"
         ],
         "type": "object"
       },
@@ -7013,7 +6971,7 @@
             "type": "integer"
           },
           "created_by": {
-            "$ref": "#/components/schemas/ReportScheduleRestApi.get_list.User1"
+            "$ref": "#/components/schemas/ReportScheduleRestApi.get_list.User2"
           },
           "created_on": {
             "format": "date-time",
@@ -7063,7 +7021,7 @@
             "type": "string"
           },
           "owners": {
-            "$ref": "#/components/schemas/ReportScheduleRestApi.get_list.User2"
+            "$ref": "#/components/schemas/ReportScheduleRestApi.get_list.User1"
           },
           "recipients": {
             "$ref": "#/components/schemas/ReportScheduleRestApi.get_list.ReportRecipients"
@@ -7124,6 +7082,10 @@
             "maxLength": 64,
             "type": "string"
           },
+          "id": {
+            "format": "int32",
+            "type": "integer"
+          },
           "last_name": {
             "maxLength": 64,
             "type": "string"
@@ -7140,10 +7102,6 @@
           "first_name": {
             "maxLength": 64,
             "type": "string"
-          },
-          "id": {
-            "format": "int32",
-            "type": "integer"
           },
           "last_name": {
             "maxLength": 64,
@@ -10758,18 +10716,6 @@
                   "passwords": {
                     "description": "JSON map of passwords for each featured database in the ZIP file. If the ZIP includes a database config in the path `databases/MyDatabase.yaml`, the password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_password\"}`.",
                     "type": "string"
-                  },
-                  "ssh_tunnel_passwords": {
-                    "description": "JSON map of passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_password\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keys": {
-                    "description": "JSON map of private_keys for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keyspasswords": {
-                    "description": "JSON map of private_key_passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key_password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key_password\"}`.",
-                    "type": "string"
                   }
                 },
                 "type": "object"
@@ -11492,18 +11438,6 @@
                   },
                   "passwords": {
                     "description": "JSON map of passwords for each featured database in the ZIP file. If the ZIP includes a database config in the path `databases/MyDatabase.yaml`, the password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_password\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_passwords": {
-                    "description": "JSON map of passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_password\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keys": {
-                    "description": "JSON map of private_keys for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keyspasswords": {
-                    "description": "JSON map of private_key_passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key_password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key_password\"}`.",
                     "type": "string"
                   }
                 },
@@ -13085,18 +13019,6 @@
                   },
                   "passwords": {
                     "description": "JSON map of passwords for each featured database in the ZIP file. If the ZIP includes a database config in the path `databases/MyDatabase.yaml`, the password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_password\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_passwords": {
-                    "description": "JSON map of passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_password\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keys": {
-                    "description": "JSON map of private_keys for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keyspasswords": {
-                    "description": "JSON map of private_key_passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key_password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key_password\"}`.",
                     "type": "string"
                   }
                 },
@@ -14866,18 +14788,6 @@
                   "passwords": {
                     "description": "JSON map of passwords for each featured database in the ZIP file. If the ZIP includes a database config in the path `databases/MyDatabase.yaml`, the password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_password\"}`.",
                     "type": "string"
-                  },
-                  "ssh_tunnel_passwords": {
-                    "description": "JSON map of passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_password\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keys": {
-                    "description": "JSON map of private_keys for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keyspasswords": {
-                    "description": "JSON map of private_key_passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key_password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key_password\"}`.",
-                    "type": "string"
                   }
                 },
                 "type": "object"
@@ -15338,50 +15248,6 @@
             "jwt": []
           }
         ],
-        "tags": [
-          "Database"
-        ]
-      }
-    },
-    "/api/v1/database/{pk}/schemas_access_for_file_upload/": {
-      "get": {
-        "parameters": [
-          {
-            "in": "path",
-            "name": "pk",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DatabaseSchemaAccessForFileUploadResponse"
-                }
-              }
-            },
-            "description": "The list of the database schemas where to upload information"
-          },
-          "401": {
-            "$ref": "#/components/responses/401"
-          },
-          "404": {
-            "$ref": "#/components/responses/404"
-          },
-          "500": {
-            "$ref": "#/components/responses/500"
-          }
-        },
-        "security": [
-          {
-            "jwt": []
-          }
-        ],
-        "summary": "The list of the database schemas where to upload information",
         "tags": [
           "Database"
         ]
@@ -16365,18 +16231,6 @@
                   "sync_metrics": {
                     "description": "sync metrics?",
                     "type": "boolean"
-                  },
-                  "ssh_tunnel_passwords": {
-                    "description": "JSON map of passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_password\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keys": {
-                    "description": "JSON map of private_keys for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keyspasswords": {
-                    "description": "JSON map of private_key_passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key_password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key_password\"}`.",
-                    "type": "string"
                   }
                 },
                 "type": "object"
@@ -17431,7 +17285,7 @@
                       "type": "string"
                     },
                     "url": {
-                      "description": "permanent link.",
+                      "description": "pemanent link.",
                       "type": "string"
                     }
                   },
@@ -19573,18 +19427,6 @@
                   },
                   "passwords": {
                     "description": "JSON map of passwords for each featured database in the ZIP file. If the ZIP includes a database config in the path `databases/MyDatabase.yaml`, the password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_password\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_passwords": {
-                    "description": "JSON map of passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_password\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keys": {
-                    "description": "JSON map of private_keys for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key\"}`.",
-                    "type": "string"
-                  },
-                  "ssh_tunnel_private_keyspasswords": {
-                    "description": "JSON map of private_key_passwords for each ssh_tunnel associated to a featured database in the ZIP file. If the ZIP includes a ssh_tunnel config in the path `databases/MyDatabase.yaml`, the private_key_password should be provided in the following format: `{\"databases/MyDatabase.yaml\": \"my_private_key_password\"}`.",
                     "type": "string"
                   }
                 },

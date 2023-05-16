@@ -22,17 +22,18 @@ import PropTypes from 'prop-types';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import { FixedSizeList as List } from 'react-window';
 import { createFilter } from 'react-search-input';
-import { t, styled, css } from '@superset-ui/core';
+import {
+  t,
+  styled,
+  isFeatureEnabled,
+  FeatureFlag,
+  css,
+} from '@superset-ui/core';
 import { Input } from 'src/components/Input';
 import { Select } from 'src/components';
 import Loading from 'src/components/Loading';
 import Button from 'src/components/Button';
 import Icons from 'src/components/Icons';
-import {
-  LocalStorageKeys,
-  getItem,
-  setItem,
-} from 'src/utils/localStorageHelpers';
 import {
   CHART_TYPE,
   NEW_COMPONENT_SOURCE_TYPE,
@@ -42,23 +43,22 @@ import {
   NEW_COMPONENTS_SOURCE_ID,
 } from 'src/dashboard/util/constants';
 import { slicePropShape } from 'src/dashboard/util/propShapes';
-import { debounce, pickBy } from 'lodash';
-import Checkbox from 'src/components/Checkbox';
-import { InfoTooltipWithTrigger } from '@superset-ui/chart-controls';
+import { FILTER_BOX_MIGRATION_STATES } from 'src/explore/constants';
+import _ from 'lodash';
 import AddSliceCard from './AddSliceCard';
 import AddSliceDragPreview from './dnd/AddSliceDragPreview';
 import DragDroppable from './dnd/DragDroppable';
 
 const propTypes = {
-  fetchSlices: PropTypes.func.isRequired,
-  updateSlices: PropTypes.func.isRequired,
+  fetchAllSlices: PropTypes.func.isRequired,
   isLoading: PropTypes.bool.isRequired,
   slices: PropTypes.objectOf(slicePropShape).isRequired,
   lastUpdated: PropTypes.number.isRequired,
   errorMessage: PropTypes.string,
-  userId: PropTypes.number.isRequired,
+  userId: PropTypes.string.isRequired,
   selectedSliceIds: PropTypes.arrayOf(PropTypes.number),
   editMode: PropTypes.bool,
+  filterboxMigrationState: FILTER_BOX_MIGRATION_STATES,
   dashboardId: PropTypes.number,
 };
 
@@ -66,6 +66,7 @@ const defaultProps = {
   selectedSliceIds: [],
   editMode: false,
   errorMessage: '',
+  filterboxMigrationState: FILTER_BOX_MIGRATION_STATES.NOOP,
 };
 
 const KEYS_TO_FILTERS = ['slice_name', 'viz_type', 'datasource_name'];
@@ -76,20 +77,15 @@ const KEYS_TO_SORT = {
   changed_on: t('recent'),
 };
 
-export const DEFAULT_SORT_KEY = 'changed_on';
+const DEFAULT_SORT_KEY = 'changed_on';
 
 const DEFAULT_CELL_HEIGHT = 128;
 
 const Controls = styled.div`
-  ${({ theme }) => `
-    display: flex;
-    flex-direction: row;
-    padding:
-      ${theme.gridUnit * 4}px
-      ${theme.gridUnit * 3}px
-      ${theme.gridUnit * 4}px
-      ${theme.gridUnit * 3}px;
-  `}
+  display: flex;
+  flex-direction: row;
+  padding: ${({ theme }) => theme.gridUnit * 3}px;
+  padding-top: ${({ theme }) => theme.gridUnit * 4}px;
 `;
 
 const StyledSelect = styled(Select)`
@@ -146,35 +142,28 @@ class SliceAdder extends React.Component {
       searchTerm: '',
       sortBy: DEFAULT_SORT_KEY,
       selectedSliceIdsSet: new Set(props.selectedSliceIds),
-      showOnlyMyCharts: getItem(
-        LocalStorageKeys.dashboard__editor_show_only_my_charts,
-        true,
-      ),
     };
     this.rowRenderer = this.rowRenderer.bind(this);
     this.searchUpdated = this.searchUpdated.bind(this);
+    this.handleKeyPress = this.handleKeyPress.bind(this);
     this.handleSelect = this.handleSelect.bind(this);
-    this.userIdForFetch = this.userIdForFetch.bind(this);
-    this.onShowOnlyMyCharts = this.onShowOnlyMyCharts.bind(this);
-  }
-
-  userIdForFetch() {
-    return this.state.showOnlyMyCharts ? this.props.userId : undefined;
   }
 
   componentDidMount() {
-    this.slicesRequest = this.props.fetchSlices(this.userIdForFetch());
+    const { userId, filterboxMigrationState } = this.props;
+    this.slicesRequest = this.props.fetchAllSlices(
+      userId,
+      isFeatureEnabled(FeatureFlag.ENABLE_FILTER_BOX_MIGRATION) &&
+        filterboxMigrationState !== FILTER_BOX_MIGRATION_STATES.SNOOZED,
+    );
   }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     const nextState = {};
     if (nextProps.lastUpdated !== this.props.lastUpdated) {
-      nextState.filteredSlices = this.getFilteredSortedSlices(
-        nextProps.slices,
-        this.state.searchTerm,
-        this.state.sortBy,
-        this.state.showOnlyMyCharts,
-      );
+      nextState.filteredSlices = Object.values(nextProps.slices)
+        .filter(createFilter(this.state.searchTerm, KEYS_TO_FILTERS))
+        .sort(SliceAdder.sortByComparator(this.state.sortBy));
     }
 
     if (nextProps.selectedSliceIds !== this.props.selectedSliceIds) {
@@ -187,35 +176,34 @@ class SliceAdder extends React.Component {
   }
 
   componentWillUnmount() {
-    // Clears the redux store keeping only selected items
-    const selectedSlices = pickBy(this.props.slices, value =>
-      this.state.selectedSliceIdsSet.has(value.slice_id),
-    );
-    this.props.updateSlices(selectedSlices);
     if (this.slicesRequest && this.slicesRequest.abort) {
       this.slicesRequest.abort();
     }
   }
 
-  getFilteredSortedSlices(slices, searchTerm, sortBy, showOnlyMyCharts) {
-    return Object.values(slices)
-      .filter(slice =>
-        showOnlyMyCharts
-          ? (slice.owners &&
-              slice.owners.find(owner => owner.id === this.props.userId)) ||
-            (slice.created_by && slice.created_by.id === this.props.userId)
-          : true,
-      )
+  getFilteredSortedSlices(searchTerm, sortBy) {
+    return Object.values(this.props.slices)
       .filter(createFilter(searchTerm, KEYS_TO_FILTERS))
       .sort(SliceAdder.sortByComparator(sortBy));
   }
 
-  handleChange = debounce(value => {
+  handleKeyPress(ev) {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+
+      this.searchUpdated(ev.target.value);
+    }
+  }
+
+  handleChange = _.debounce(value => {
     this.searchUpdated(value);
-    this.slicesRequest = this.props.fetchSlices(
-      this.userIdForFetch(),
+
+    const { userId, filterboxMigrationState } = this.props;
+    this.slicesRequest = this.props.fetchFilteredSlices(
+      userId,
+      isFeatureEnabled(FeatureFlag.ENABLE_FILTER_BOX_MIGRATION) &&
+        filterboxMigrationState !== FILTER_BOX_MIGRATION_STATES.SNOOZED,
       value,
-      this.state.sortBy,
     );
   }, 300);
 
@@ -223,10 +211,8 @@ class SliceAdder extends React.Component {
     this.setState(prevState => ({
       searchTerm,
       filteredSlices: this.getFilteredSortedSlices(
-        this.props.slices,
         searchTerm,
         prevState.sortBy,
-        prevState.showOnlyMyCharts,
       ),
     }));
   }
@@ -235,15 +221,16 @@ class SliceAdder extends React.Component {
     this.setState(prevState => ({
       sortBy,
       filteredSlices: this.getFilteredSortedSlices(
-        this.props.slices,
         prevState.searchTerm,
         sortBy,
-        prevState.showOnlyMyCharts,
       ),
     }));
-    this.slicesRequest = this.props.fetchSlices(
-      this.userIdForFetch(),
-      this.state.searchTerm,
+
+    const { userId, filterboxMigrationState } = this.props;
+    this.slicesRequest = this.props.fetchSortedSlices(
+      userId,
+      isFeatureEnabled(FeatureFlag.ENABLE_FILTER_BOX_MIGRATION) &&
+        filterboxMigrationState !== FILTER_BOX_MIGRATION_STATES.SNOOZED,
       sortBy,
     );
   }
@@ -295,29 +282,6 @@ class SliceAdder extends React.Component {
     );
   }
 
-  onShowOnlyMyCharts(showOnlyMyCharts) {
-    if (!showOnlyMyCharts) {
-      this.slicesRequest = this.props.fetchSlices(
-        undefined,
-        this.state.searchTerm,
-        this.state.sortBy,
-      );
-    }
-    this.setState(prevState => ({
-      showOnlyMyCharts,
-      filteredSlices: this.getFilteredSortedSlices(
-        this.props.slices,
-        prevState.searchTerm,
-        prevState.sortBy,
-        showOnlyMyCharts,
-      ),
-    }));
-    setItem(
-      LocalStorageKeys.dashboard__editor_show_only_my_charts,
-      showOnlyMyCharts,
-    );
-  }
-
   render() {
     return (
       <div
@@ -345,13 +309,10 @@ class SliceAdder extends React.Component {
         </NewChartButtonContainer>
         <Controls>
           <Input
-            placeholder={
-              this.state.showOnlyMyCharts
-                ? t('Filter your charts')
-                : t('Filter charts')
-            }
+            placeholder={t('Filter your charts')}
             className="search-input"
             onChange={ev => this.handleChange(ev.target.value)}
+            onKeyPress={this.handleKeyPress}
             data-test="dashboard-charts-filter-search-input"
           />
           <StyledSelect
@@ -365,30 +326,6 @@ class SliceAdder extends React.Component {
             placeholder={t('Sort by')}
           />
         </Controls>
-        <div
-          css={theme => css`
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-start;
-            align-items: center;
-            gap: ${theme.gridUnit}px;
-            padding: 0 ${theme.gridUnit * 3}px ${theme.gridUnit * 4}px
-              ${theme.gridUnit * 3}px;
-          `}
-        >
-          <Checkbox
-            onChange={this.onShowOnlyMyCharts}
-            checked={this.state.showOnlyMyCharts}
-          />
-          {t('Show only my charts')}
-          <InfoTooltipWithTrigger
-            placement="top"
-            tooltip={t(
-              `You can choose to display all charts that you have access to or only the ones you own.
-              Your filter selection will be saved and remain active until you choose to change it.`,
-            )}
-          />
-        </div>
         {this.props.isLoading && <Loading />}
         {!this.props.isLoading && this.state.filteredSlices.length > 0 && (
           <ChartList>

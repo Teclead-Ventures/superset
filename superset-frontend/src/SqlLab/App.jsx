@@ -17,17 +17,24 @@
  * under the License.
  */
 import React from 'react';
-import persistState from 'redux-localstorage';
+import { createStore, compose, applyMiddleware } from 'redux';
 import { Provider } from 'react-redux';
+import thunkMiddleware from 'redux-thunk';
 import { hot } from 'react-hot-loader/root';
-import { FeatureFlag, ThemeProvider } from '@superset-ui/core';
+import { ThemeProvider } from '@superset-ui/core';
 import { GlobalStyles } from 'src/GlobalStyles';
-import { initFeatureFlags, isFeatureEnabled } from 'src/featureFlags';
-import { setupStore } from 'src/views/store';
+import QueryProvider from 'src/views/QueryProvider';
+import {
+  initFeatureFlags,
+  isFeatureEnabled,
+  FeatureFlag,
+} from 'src/featureFlags';
 import setupExtensions from 'src/setup/setupExtensions';
 import getBootstrapData from 'src/utils/getBootstrapData';
+import logger from 'src/middleware/loggerMiddleware';
 import getInitialState from './reducers/getInitialState';
-import { reducers } from './reducers/index';
+import rootReducer from './reducers/index';
+import { initEnhancer } from '../reduxUtils';
 import App from './components/App';
 import {
   emptyQueryResults,
@@ -106,18 +113,17 @@ const sqlLabPersistStateConfig = {
   },
 };
 
-export const store = setupStore({
+const store = createStore(
+  rootReducer,
   initialState,
-  rootReducers: reducers,
-  ...(!isFeatureEnabled(FeatureFlag.SQLLAB_BACKEND_PERSISTENCE) && {
-    enhancers: [
-      persistState(
-        sqlLabPersistStateConfig.paths,
-        sqlLabPersistStateConfig.config,
-      ),
-    ],
-  }),
-});
+  compose(
+    applyMiddleware(thunkMiddleware, logger),
+    initEnhancer(
+      !isFeatureEnabled(FeatureFlag.SQLLAB_BACKEND_PERSISTENCE),
+      sqlLabPersistStateConfig,
+    ),
+  ),
+);
 
 // Highlight the navbar menu
 const menus = document.querySelectorAll('.nav.navbar-nav li.dropdown');
@@ -132,13 +138,15 @@ if (sqlLabMenu) {
 }
 
 const Application = () => (
-  <Provider store={store}>
-    <ThemeProvider theme={theme}>
-      <GlobalStyles />
-      <SqlLabGlobalStyles />
-      <App />
-    </ThemeProvider>
-  </Provider>
+  <QueryProvider>
+    <Provider store={store}>
+      <ThemeProvider theme={theme}>
+        <GlobalStyles />
+        <SqlLabGlobalStyles />
+        <App />
+      </ThemeProvider>
+    </Provider>
+  </QueryProvider>
 );
 
 export default hot(Application);

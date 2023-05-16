@@ -33,12 +33,10 @@ import {
   SLOW_DEBOUNCE,
   t,
 } from '@superset-ui/core';
-import { useDispatch } from 'react-redux';
 import { AntdForm } from 'src/components';
 import ErrorBoundary from 'src/components/ErrorBoundary';
 import { StyledModal } from 'src/components/Modal';
 import { testWithId } from 'src/utils/testUtils';
-import { updateCascadeParentIds } from 'src/dashboard/actions/nativeFilters';
 import { useFilterConfigMap, useFilterConfiguration } from '../state';
 import FilterConfigurePane from './FilterConfigurePane';
 import FiltersConfigForm, {
@@ -91,11 +89,7 @@ export interface FiltersConfigModalProps {
   onSave: (filterConfig: FilterConfiguration) => Promise<void>;
   onCancel: () => void;
 }
-export const ALLOW_DEPENDENCIES = [
-  'filter_range',
-  'filter_select',
-  'filter_time',
-];
+export const ALLOW_DEPENDENCIES = ['filter_select'];
 
 const DEFAULT_EMPTY_FILTERS: string[] = [];
 const DEFAULT_REMOVED_FILTERS: Record<string, FilterRemoval> = {};
@@ -118,8 +112,6 @@ function FiltersConfigModal({
   onSave,
   onCancel,
 }: FiltersConfigModalProps) {
-  const dispatch = useDispatch();
-
   const [form] = AntdForm.useForm<NativeFiltersForm>();
 
   const configFormRef = useRef<any>();
@@ -295,12 +287,11 @@ function FiltersConfigModal({
   const getAvailableFilters = useCallback(
     (filterId: string) =>
       filterIds
-        .filter(id => id !== filterId)
-        .filter(id => canBeUsedAsDependency(id))
-        .map(id => ({
-          label: getFilterTitle(id),
-          value: id,
-          type: filterConfigMap[id]?.filterType,
+        .filter(key => key !== filterId)
+        .filter(filterId => canBeUsedAsDependency(filterId))
+        .map(key => ({
+          label: getFilterTitle(key),
+          value: key,
         })),
     [canBeUsedAsDependency, filterIds, getFilterTitle],
   );
@@ -313,11 +304,8 @@ function FiltersConfigModal({
       }
       const { cascadeParentIds } = filter;
       if (cascadeParentIds) {
-        dispatch(
-          updateCascadeParentIds(
-            key,
-            cascadeParentIds.filter(id => canBeUsedAsDependency(id)),
-          ),
+        filter.cascadeParentIds = cascadeParentIds.filter(id =>
+          canBeUsedAsDependency(id),
         );
       }
     });

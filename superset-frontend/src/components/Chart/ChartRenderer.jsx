@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { snakeCase, isEqual, cloneDeep } from 'lodash';
+import { snakeCase, isEqual } from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
 import {
@@ -31,7 +31,7 @@ import {
 import { Logger, LOG_ACTIONS_RENDER_CHART } from 'src/logger/LogUtils';
 import { EmptyStateBig, EmptyStateSmall } from 'src/components/EmptyState';
 import { ChartSource } from 'src/types/ChartSource';
-import ChartContextMenu from './ChartContextMenu/ChartContextMenu';
+import ChartContextMenu from './ChartContextMenu';
 
 const propTypes = {
   annotationData: PropTypes.object,
@@ -87,8 +87,7 @@ class ChartRenderer extends React.Component {
     this.state = {
       showContextMenu:
         props.source === ChartSource.Dashboard &&
-        (isFeatureEnabled(FeatureFlag.DRILL_TO_DETAIL) ||
-          isFeatureEnabled(FeatureFlag.DASHBOARD_CROSS_FILTERS)),
+        isFeatureEnabled(FeatureFlag.DRILL_TO_DETAIL),
       inContextMenu: false,
     };
     this.hasQueryResponseChange = false;
@@ -117,11 +116,6 @@ class ChartRenderer extends React.Component {
         this.props.actions?.updateDataMask(this.props.chartId, dataMask);
       },
     };
-
-    // TODO: queriesResponse comes from Redux store but it's being edited by
-    // the plugins, hence we need to clone it to avoid state mutation
-    // until we change the reducers to use Redux Toolkit with Immer
-    this.mutableQueriesResponse = cloneDeep(this.props.queriesResponse);
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -136,11 +130,6 @@ class ChartRenderer extends React.Component {
       }
       this.hasQueryResponseChange =
         nextProps.queriesResponse !== this.props.queriesResponse;
-
-      if (this.hasQueryResponseChange) {
-        this.mutableQueriesResponse = cloneDeep(nextProps.queriesResponse);
-      }
-
       return (
         this.hasQueryResponseChange ||
         !isEqual(nextProps.datasource, this.props.datasource) ||
@@ -256,6 +245,7 @@ class ChartRenderer extends React.Component {
       chartIsStale,
       formData,
       latestQueryFormData,
+      queriesResponse,
       postTransformProps,
     } = this.props;
 
@@ -348,7 +338,7 @@ class ChartRenderer extends React.Component {
             filterState={filterState}
             hooks={this.hooks}
             behaviors={behaviors}
-            queriesData={this.mutableQueriesResponse}
+            queriesData={queriesResponse}
             onRenderSuccess={this.handleRenderSuccess}
             onRenderFailure={this.handleRenderFailure}
             noResults={noResultsComponent}

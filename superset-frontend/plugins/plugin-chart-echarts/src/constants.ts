@@ -20,11 +20,11 @@
 import { JsonValue, t, TimeGranularity } from '@superset-ui/core';
 import { ReactNode } from 'react';
 import {
-  LabelPositionEnum,
   LegendFormData,
+  TitleFormData,
+  LabelPositionEnum,
   LegendOrientation,
   LegendType,
-  TitleFormData,
 } from './types';
 
 // eslint-disable-next-line import/prefer-default-export
@@ -69,25 +69,19 @@ export enum OpacityEnum {
   NonTransparent = 1,
 }
 
-export enum StackControlsValue {
+export enum AreaChartExtraControlsValue {
   Stack = 'Stack',
-  Stream = 'Stream',
   Expand = 'Expand',
 }
 
-export const StackControlOptions: [
+export const AreaChartExtraControlsOptions: [
   JsonValue,
   Exclude<ReactNode, null | undefined | boolean>,
 ][] = [
   [null, t('None')],
-  [StackControlsValue.Stack, t('Stack')],
-  [StackControlsValue.Stream, t('Stream')],
+  [AreaChartExtraControlsValue.Stack, t('Stack')],
+  [AreaChartExtraControlsValue.Expand, t('Expand')],
 ];
-
-export const AreaChartStackControlOptions: [
-  JsonValue,
-  Exclude<ReactNode, null | undefined | boolean>,
-][] = [...StackControlOptions, [StackControlsValue.Expand, t('Expand')]];
 
 export const TIMEGRAIN_TO_TIMESTAMP = {
   [TimeGranularity.HOUR]: 3600 * 1000,

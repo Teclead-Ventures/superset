@@ -237,7 +237,7 @@ export default function transformProps(
       trigger: 'item',
     },
     legend: {
-      ...getLegendProps(legendType, legendOrientation, showLegend, theme),
+      ...getLegendProps(legendType, legendOrientation, showLegend),
       data: Array.from(columnsLabelMap.keys()),
     },
     series,
@@ -259,6 +259,5 @@ export default function transformProps(
     selectedValues,
     onContextMenu,
     refs,
-    coltypeMapping,
   };
 }

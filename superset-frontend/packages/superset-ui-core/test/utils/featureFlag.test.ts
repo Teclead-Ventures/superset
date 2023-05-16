@@ -25,11 +25,13 @@ it('returns false and raises console error if feature flags have not been initia
     value: undefined,
   });
 
-  expect(isFeatureEnabled(FeatureFlag.DRILL_BY)).toEqual(false);
+  expect(isFeatureEnabled(FeatureFlag.ALLOW_DASHBOARD_DOMAIN_SHARDING)).toEqual(
+    false,
+  );
   expect(console.error).toHaveBeenCalled();
   // @ts-expect-error
   expect(console.error.mock.calls[0][0]).toEqual(
-    'Failed to query feature flag DRILL_BY',
+    'Failed to query feature flag ALLOW_DASHBOARD_DOMAIN_SHARDING',
   );
 });
 
@@ -38,7 +40,9 @@ it('returns false for unset feature flag', () => {
     value: {},
   });
 
-  expect(isFeatureEnabled(FeatureFlag.DRILL_BY)).toEqual(false);
+  expect(isFeatureEnabled(FeatureFlag.ALLOW_DASHBOARD_DOMAIN_SHARDING)).toEqual(
+    false,
+  );
 });
 
 it('returns true for set feature flag', () => {

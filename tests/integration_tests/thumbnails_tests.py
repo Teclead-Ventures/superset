@@ -199,6 +199,7 @@ class TestWebDriverProxy(SupersetTestCase):
 
 
 class TestThumbnails(SupersetTestCase):
+
     mock_image = b"bytes mock image"
     digest_return_value = "foo_bar"
     digest_hash = "5c7d96a3dd7a87850a2ef34087565a6e"

@@ -137,7 +137,7 @@ class TestExportDatasetsCommand(SupersetTestCase):
             "description": "Energy consumption",
             "extra": None,
             "fetch_values_predicate": None,
-            "filter_select_enabled": True,
+            "filter_select_enabled": False,
             "main_dttm_col": None,
             "metrics": [
                 {
@@ -327,11 +327,10 @@ class TestImportDatasetsCommand(SupersetTestCase):
         db.session.commit()
 
     @patch("superset.datasets.commands.importers.v1.utils.g")
-    @patch("superset.security.manager.g")
     @pytest.mark.usefixtures("load_energy_table_with_slice")
-    def test_import_v1_dataset(self, sm_g, utils_g):
+    def test_import_v1_dataset(self, mock_g):
         """Test that we can import a dataset"""
-        admin = sm_g.user = utils_g.user = security_manager.find_user("admin")
+        mock_g.user = security_manager.find_user("admin")
         contents = {
             "metadata.yaml": yaml.safe_dump(dataset_metadata_config),
             "databases/imported_database.yaml": yaml.safe_dump(database_config),
@@ -361,7 +360,7 @@ class TestImportDatasetsCommand(SupersetTestCase):
         )
 
         # user should be included as one of the owners
-        assert dataset.owners == [admin]
+        assert dataset.owners == [mock_g.user]
 
         # database is also imported
         assert str(dataset.database.uuid) == "b8a1ccd3-779d-4ab7-8ad8-9ab119d7fe89"
@@ -396,11 +395,8 @@ class TestImportDatasetsCommand(SupersetTestCase):
         db.session.delete(dataset.database)
         db.session.commit()
 
-    @patch("superset.security.manager.g")
-    def test_import_v1_dataset_multiple(self, mock_g):
+    def test_import_v1_dataset_multiple(self):
         """Test that a dataset can be imported multiple times"""
-        mock_g.user = security_manager.find_user("admin")
-
         contents = {
             "metadata.yaml": yaml.safe_dump(dataset_metadata_config),
             "databases/imported_database.yaml": yaml.safe_dump(database_config),
@@ -487,11 +483,8 @@ class TestImportDatasetsCommand(SupersetTestCase):
             }
         }
 
-    @patch("superset.security.manager.g")
-    def test_import_v1_dataset_existing_database(self, mock_g):
+    def test_import_v1_dataset_existing_database(self):
         """Test that a dataset can be imported when the database already exists"""
-        mock_g.user = security_manager.find_user("admin")
-
         # first import database...
         contents = {
             "metadata.yaml": yaml.safe_dump(database_metadata_config),

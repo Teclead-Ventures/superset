@@ -294,6 +294,5 @@ export default function transformProps(
     selectedValues: filterState.selectedValues || [],
     onContextMenu,
     refs,
-    coltypeMapping,
   };
 }

@@ -106,13 +106,11 @@ class QueryContextProcessor:
     ) -> Dict[str, Any]:
         """Handles caching around the df payload retrieval"""
         cache_key = self.query_cache_key(query_obj)
-        timeout = self.get_cache_timeout()
-        force_query = self._query_context.force or timeout == -1
         cache = QueryCacheManager.get(
-            key=cache_key,
-            region=CacheRegion.DATA,
-            force_query=force_query,
-            force_cached=force_cached,
+            cache_key,
+            CacheRegion.DATA,
+            self._query_context.force,
+            force_cached,
         )
 
         if query_obj and cache_key and not cache.is_loaded:
@@ -141,7 +139,7 @@ class QueryContextProcessor:
                     key=cache_key,
                     query_result=query_result,
                     annotation_data=annotation_data,
-                    force_query=force_query,
+                    force_query=self._query_context.force,
                     timeout=self.get_cache_timeout(),
                     datasource_uid=self._qc_datasource.uid,
                     region=CacheRegion.DATA,
@@ -237,7 +235,7 @@ class QueryContextProcessor:
             try:
                 df = query_object.exec_post_processing(df)
             except InvalidPostProcessingError as ex:
-                raise QueryObjectValidationError(ex.message) from ex
+                raise QueryObjectValidationError from ex
 
         result.df = df
         result.query = query

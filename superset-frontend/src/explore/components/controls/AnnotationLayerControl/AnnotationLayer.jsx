@@ -17,7 +17,6 @@
  * under the License.
  */
 import React from 'react';
-import rison from 'rison';
 import PropTypes from 'prop-types';
 import { CompactPicker } from 'react-color';
 import Button from 'src/components/Button';
@@ -47,7 +46,6 @@ import {
 import PopoverSection from 'src/components/PopoverSection';
 import ControlHeader from 'src/explore/components/ControlHeader';
 import { EmptyStateSmall } from 'src/components/EmptyState';
-import { FILTER_OPTIONS_LIMIT } from 'src/explore/constants';
 
 const AUTOMATIC_COLOR = '';
 
@@ -302,12 +300,8 @@ class AnnotationLayer extends React.PureComponent {
   fetchOptions(annotationType, sourceType, isLoadingOptions) {
     if (isLoadingOptions) {
       if (sourceType === ANNOTATION_SOURCE_TYPES.NATIVE) {
-        const queryParams = rison.encode({
-          page: 0,
-          page_size: FILTER_OPTIONS_LIMIT,
-        });
         SupersetClient.get({
-          endpoint: `/api/v1/annotation_layer/?q=${queryParams}`,
+          endpoint: '/api/v1/annotation_layer/',
         }).then(({ json }) => {
           const layers = json
             ? json.result.map(layer => ({
@@ -321,45 +315,34 @@ class AnnotationLayer extends React.PureComponent {
           });
         });
       } else if (requiresQuery(sourceType)) {
-        const queryParams = rison.encode({
-          filters: [
-            {
-              col: 'id',
-              opr: 'chart_owned_created_favored_by_me',
-              value: true,
-            },
-          ],
-          order_column: 'slice_name',
-          order_direction: 'asc',
-          page: 0,
-          page_size: FILTER_OPTIONS_LIMIT,
-        });
-        SupersetClient.get({
-          endpoint: `/api/v1/chart/?q=${queryParams}`,
-        }).then(({ json }) => {
-          const registry = getChartMetadataRegistry();
-          this.setState({
-            isLoadingOptions: false,
-            valueOptions: json.result
-              .filter(x => {
-                const metadata = registry.get(x.viz_type);
-                return metadata && metadata.canBeAnnotationType(annotationType);
-              })
-              .map(x => ({
-                value: x.id,
-                label: x.slice_name,
-                slice: {
-                  ...x,
-                  data: {
-                    ...x.form_data,
-                    groupby: x.form_data.groupby?.map(column =>
-                      getColumnLabel(column),
-                    ),
+        SupersetClient.get({ endpoint: '/superset/user_slices' }).then(
+          ({ json }) => {
+            const registry = getChartMetadataRegistry();
+            this.setState({
+              isLoadingOptions: false,
+              valueOptions: json
+                .filter(x => {
+                  const metadata = registry.get(x.viz_type);
+                  return (
+                    metadata && metadata.canBeAnnotationType(annotationType)
+                  );
+                })
+                .map(x => ({
+                  value: x.id,
+                  label: x.title,
+                  slice: {
+                    ...x,
+                    data: {
+                      ...x.data,
+                      groupby: x.data.groupby?.map(column =>
+                        getColumnLabel(column),
+                      ),
+                    },
                   },
-                },
-              })),
-          });
-        });
+                })),
+            });
+          },
+        );
       } else {
         this.setState({
           isLoadingOptions: false,

@@ -96,13 +96,6 @@ class Slice(  # pylint: disable=too-many-public-methods
         security_manager.user_model, foreign_keys=[last_saved_by_fk]
     )
     owners = relationship(security_manager.user_model, secondary=slice_user)
-    tags = relationship(
-        "Tag",
-        secondary="tagged_object",
-        primaryjoin="and_(Slice.id == TaggedObject.object_id)",
-        secondaryjoin="and_(TaggedObject.tag_id == Tag.id, "
-        "TaggedObject.object_type == 'chart')",
-    )
     table = relationship(
         "SqlaTable",
         foreign_keys=[datasource_id],
@@ -330,12 +323,6 @@ class Slice(  # pylint: disable=too-many-public-methods
     def slice_link(self) -> Markup:
         name = escape(self.chart)
         return Markup(f'<a href="{self.url}">{name}</a>')
-
-    @property
-    def created_by_url(self) -> str:
-        if not self.created_by:
-            return ""
-        return f"/superset/profile/{self.created_by.username}"
 
     @property
     def changed_by_url(self) -> str:

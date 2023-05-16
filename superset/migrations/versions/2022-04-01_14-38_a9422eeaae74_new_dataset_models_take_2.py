@@ -103,6 +103,7 @@ def insert_from_select(
 
 
 class Database(Base):
+
     __tablename__ = "dbs"
     __table_args__ = (UniqueConstraint("database_name"),)
 
@@ -117,6 +118,7 @@ class Database(Base):
 
 
 class TableColumn(AuxiliaryColumnsMixin, Base):
+
     __tablename__ = "table_columns"
     __table_args__ = (UniqueConstraint("table_id", "column_name"),)
 
@@ -136,6 +138,7 @@ class TableColumn(AuxiliaryColumnsMixin, Base):
 
 
 class SqlMetric(AuxiliaryColumnsMixin, Base):
+
     __tablename__ = "sql_metrics"
     __table_args__ = (UniqueConstraint("table_id", "metric_name"),)
 
@@ -161,6 +164,7 @@ sqlatable_user_table = sa.Table(
 
 
 class SqlaTable(AuxiliaryColumnsMixin, Base):
+
     __tablename__ = "tables"
     __table_args__ = (UniqueConstraint("database_id", "schema", "table_name"),)
 
@@ -209,6 +213,7 @@ dataset_user_association_table = sa.Table(
 
 
 class NewColumn(AuxiliaryColumnsMixin, Base):
+
     __tablename__ = "sl_columns"
 
     id = sa.Column(sa.Integer, primary_key=True)
@@ -238,6 +243,7 @@ class NewColumn(AuxiliaryColumnsMixin, Base):
 
 
 class NewTable(AuxiliaryColumnsMixin, Base):
+
     __tablename__ = "sl_tables"
 
     id = sa.Column(sa.Integer, primary_key=True)
@@ -258,6 +264,7 @@ class NewTable(AuxiliaryColumnsMixin, Base):
 
 
 class NewDataset(Base, AuxiliaryColumnsMixin):
+
     __tablename__ = "sl_datasets"
 
     id = sa.Column(sa.Integer, primary_key=True)
@@ -629,6 +636,7 @@ def postprocess_columns(session: Session) -> None:
         return
 
     def get_joined_tables(offset, limit):
+
         # Import aliased from sqlalchemy
         from sqlalchemy.orm import aliased
 
@@ -780,7 +788,7 @@ def postprocess_columns(session: Session) -> None:
                 updates["external_url"] = external_url
 
             # update extra json
-            for key, val in (
+            for (key, val) in (
                 {
                     "verbose_name": verbose_name,
                     "python_date_format": python_date_format,

@@ -23,7 +23,6 @@ import {
   ContributionType,
   QueryFormColumn,
   QueryFormData,
-  QueryFormMetric,
   TimeFormatter,
   TimeGranularity,
 } from '@superset-ui/core';
@@ -66,14 +65,12 @@ export type EchartsTimeseriesFormData = QueryFormData & {
   logAxis: boolean;
   markerEnabled: boolean;
   markerSize: number;
-  metrics: QueryFormMetric[];
   minorSplitLine: boolean;
   opacity: number;
   orderDesc: boolean;
   rowLimit: number;
   seriesType: EchartsTimeseriesSeriesType;
   stack: StackType;
-  timeCompare?: string[];
   tooltipTimeFormat?: string;
   truncateYAxis: boolean;
   yAxisFormat?: string;

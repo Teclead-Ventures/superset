@@ -16,9 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { useCallback, useEffect, useRef } from 'react';
-import useEffectEvent from 'src/hooks/useEffectEvent';
-import { api, JsonResponse } from './queryApi';
+import { useRef } from 'react';
+import { useQuery, UseQueryOptions } from 'react-query';
+import rison from 'rison';
+import { SupersetClient } from '@superset-ui/core';
+
+export type FetchSchemasQueryParams = {
+  dbId?: string | number;
+  forceRefresh?: boolean;
+};
+
+type QueryData = {
+  json: { result: string[] };
+  response: Response;
+};
 
 export type SchemaOption = {
   value: string;
@@ -26,98 +37,44 @@ export type SchemaOption = {
   title: string;
 };
 
-export type FetchSchemasQueryParams = {
-  dbId?: string | number;
-  forceRefresh: boolean;
-  onSuccess?: (data: SchemaOption[], isRefetched: boolean) => void;
-  onError?: () => void;
-};
+export function fetchSchemas({ dbId, forceRefresh }: FetchSchemasQueryParams) {
+  const queryParams = rison.encode({ force: forceRefresh });
+  // TODO: Would be nice to add pagination in a follow-up. Needs endpoint changes.
+  const endpoint = `/api/v1/database/${dbId}/schemas/?q=${queryParams}`;
+  return SupersetClient.get({ endpoint }) as Promise<QueryData>;
+}
 
-type Params = Omit<FetchSchemasQueryParams, 'forceRefresh'>;
-
-const schemaApi = api.injectEndpoints({
-  endpoints: builder => ({
-    schemas: builder.query<SchemaOption[], FetchSchemasQueryParams>({
-      providesTags: [{ type: 'Schemas', id: 'LIST' }],
-      query: ({ dbId, forceRefresh }) => ({
-        endpoint: `/api/v1/database/${dbId}/schemas/`,
-        // TODO: Would be nice to add pagination in a follow-up. Needs endpoint changes.
-        urlParams: {
-          force: forceRefresh,
-        },
-        transformResponse: ({ json }: JsonResponse) =>
-          json.result.map((value: string) => ({
-            value,
-            label: value,
-            title: value,
-          })),
-      }),
-      serializeQueryArgs: ({ queryArgs: { dbId } }) => ({
-        dbId,
-      }),
-    }),
-  }),
-});
-
-export const { useLazySchemasQuery, useSchemasQuery } = schemaApi;
-
-const EMPTY_SCHEMAS = [] as SchemaOption[];
+type Params = FetchSchemasQueryParams &
+  Pick<UseQueryOptions<SchemaOption[]>, 'onSuccess' | 'onError'>;
 
 export function useSchemas(options: Params) {
-  const isMountedRef = useRef(false);
   const { dbId, onSuccess, onError } = options || {};
-  const [trigger] = useLazySchemasQuery();
-  const result = useSchemasQuery(
-    { dbId, forceRefresh: false },
+  const forceRefreshRef = useRef(false);
+  const params = { dbId };
+  const result = useQuery<QueryData, Error, SchemaOption[]>(
+    ['schemas', { dbId }],
+    () => fetchSchemas({ ...params, forceRefresh: forceRefreshRef.current }),
     {
-      skip: !dbId,
+      select: ({ json }) =>
+        json.result.map((value: string) => ({
+          value,
+          label: value,
+          title: value,
+        })),
+      enabled: Boolean(dbId),
+      onSuccess,
+      onError,
+      onSettled: () => {
+        forceRefreshRef.current = false;
+      },
     },
   );
-
-  const handleOnSuccess = useEffectEvent(
-    (data: SchemaOption[], isRefetched: boolean) => {
-      onSuccess?.(data, isRefetched);
-    },
-  );
-
-  const handleOnError = useEffectEvent(() => {
-    onError?.();
-  });
-
-  const refetch = useCallback(() => {
-    if (dbId) {
-      trigger({ dbId, forceRefresh: true }).then(
-        ({ isSuccess, isError, data }) => {
-          if (isSuccess) {
-            handleOnSuccess(data || EMPTY_SCHEMAS, true);
-          }
-          if (isError) {
-            handleOnError();
-          }
-        },
-      );
-    }
-  }, [dbId, handleOnError, handleOnSuccess, trigger]);
-
-  useEffect(() => {
-    if (isMountedRef.current) {
-      const { requestId, isSuccess, isError, isFetching, data, originalArgs } =
-        result;
-      if (!originalArgs?.forceRefresh && requestId && !isFetching) {
-        if (isSuccess) {
-          handleOnSuccess(data || EMPTY_SCHEMAS, false);
-        }
-        if (isError) {
-          handleOnError();
-        }
-      }
-    } else {
-      isMountedRef.current = true;
-    }
-  }, [result, handleOnSuccess, handleOnError]);
 
   return {
     ...result,
-    refetch,
+    refetch: () => {
+      forceRefreshRef.current = true;
+      return result.refetch();
+    },
   };
 }

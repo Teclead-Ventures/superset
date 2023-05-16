@@ -52,7 +52,7 @@ class MachineAuthProvider:
         :return: The WebDriver passed in (fluent)
         """
         # Short-circuit this method if we have an override configured
-        if self._auth_webdriver_func_override:  # type: ignore
+        if self._auth_webdriver_func_override:
             return self._auth_webdriver_func_override(driver, user)
 
         # Setting cookies requires doing a request first

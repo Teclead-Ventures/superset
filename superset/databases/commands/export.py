@@ -28,7 +28,6 @@ from superset.commands.export.models import ExportModelsCommand
 from superset.models.core import Database
 from superset.utils.dict_import_export import EXPORT_VERSION
 from superset.utils.file import get_filename
-from superset.utils.ssh_tunnel import mask_password_info
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +50,7 @@ def parse_extra(extra_payload: str) -> Dict[str, Any]:
 
 
 class ExportDatabasesCommand(ExportModelsCommand):
+
     dao = DatabaseDAO
     not_found = DatabaseNotFoundError
 
@@ -86,15 +86,6 @@ class ExportDatabasesCommand(ExportModelsCommand):
                 extra["schemas_allowed_for_csv_upload"] = extra.pop(
                     "schemas_allowed_for_file_upload"
                 )
-
-        if ssh_tunnel := DatabaseDAO.get_ssh_tunnel(model.id):
-            ssh_tunnel_payload = ssh_tunnel.export_to_dict(
-                recursive=False,
-                include_parent_ref=False,
-                include_defaults=True,
-                export_uuids=False,
-            )
-            payload["ssh_tunnel"] = mask_password_info(ssh_tunnel_payload)
 
         payload["version"] = EXPORT_VERSION
 

@@ -20,8 +20,7 @@ import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeRaw from 'rehype-raw';
-import remarkGfm from 'remark-gfm';
-import { mergeWith, isArray } from 'lodash';
+import { merge } from 'lodash';
 import { FeatureFlag, isFeatureEnabled } from '../utils';
 
 interface SafeMarkdownProps {
@@ -30,44 +29,29 @@ interface SafeMarkdownProps {
   htmlSchemaOverrides?: typeof defaultSchema;
 }
 
-export function getOverrideHtmlSchema(
-  originalSchema: typeof defaultSchema,
-  htmlSchemaOverrides: SafeMarkdownProps['htmlSchemaOverrides'],
-) {
-  return mergeWith(originalSchema, htmlSchemaOverrides, (objValue, srcValue) =>
-    isArray(objValue) ? objValue.concat(srcValue) : undefined,
-  );
-}
-
 function SafeMarkdown({
   source,
   htmlSanitization = true,
   htmlSchemaOverrides = {},
 }: SafeMarkdownProps) {
+  const displayHtml = isFeatureEnabled(FeatureFlag.DISPLAY_MARKDOWN_HTML);
   const escapeHtml = isFeatureEnabled(FeatureFlag.ESCAPE_MARKDOWN_HTML);
 
   const rehypePlugins = useMemo(() => {
     const rehypePlugins: any = [];
-    if (!escapeHtml) {
+    if (displayHtml && !escapeHtml) {
       rehypePlugins.push(rehypeRaw);
       if (htmlSanitization) {
-        const schema = getOverrideHtmlSchema(
-          defaultSchema,
-          htmlSchemaOverrides,
-        );
+        const schema = merge(defaultSchema, htmlSchemaOverrides);
         rehypePlugins.push([rehypeSanitize, schema]);
       }
     }
     return rehypePlugins;
-  }, [escapeHtml, htmlSanitization, htmlSchemaOverrides]);
+  }, [displayHtml, escapeHtml, htmlSanitization, htmlSchemaOverrides]);
 
   // React Markdown escapes HTML by default
   return (
-    <ReactMarkdown
-      rehypePlugins={rehypePlugins}
-      remarkPlugins={[remarkGfm]}
-      skipHtml={false}
-    >
+    <ReactMarkdown rehypePlugins={rehypePlugins} skipHtml={!displayHtml}>
       {source}
     </ReactMarkdown>
   );

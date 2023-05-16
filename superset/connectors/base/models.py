@@ -19,18 +19,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from enum import Enum
-from typing import (
-    Any,
-    Dict,
-    Hashable,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    TYPE_CHECKING,
-    Union,
-)
+from typing import Any, Dict, Hashable, List, Optional, Set, Type, TYPE_CHECKING, Union
 
 from flask_appbuilder.security.sqla.models import User
 from flask_babel import gettext as __
@@ -39,7 +28,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import foreign, Query, relationship, RelationshipProperty, Session
 from sqlalchemy.sql import literal_column
 
-from superset import security_manager
+from superset import is_feature_enabled, security_manager
 from superset.constants import EMPTY_STRING, NULL_STRING
 from superset.datasets.commands.exceptions import DatasetNotFoundError
 from superset.models.helpers import AuditMixinNullable, ImportExportMixin, QueryResult
@@ -122,7 +111,7 @@ class BaseDatasource(
     description = Column(Text)
     default_endpoint = Column(Text)
     is_featured = Column(Boolean, default=False)  # TODO deprecating
-    filter_select_enabled = Column(Boolean, default=True)
+    filter_select_enabled = Column(Boolean, default=is_feature_enabled("UX_BETA"))
     offset = Column(Integer, default=0)
     cache_timeout = Column(Integer)
     params = Column(String(1000))
@@ -253,33 +242,26 @@ class BaseDatasource(
         pass
 
     @property
-    def order_by_choices(self) -> List[Tuple[str, str]]:
-        choices = []
+    def data(self) -> Dict[str, Any]:
+        """Data representation of the datasource sent to the frontend"""
+        order_by_choices = []
         # self.column_names return sorted column_names
         for column_name in self.column_names:
             column_name = str(column_name or "")
-            choices.append(
+            order_by_choices.append(
                 (json.dumps([column_name, True]), f"{column_name} " + __("[asc]"))
             )
-            choices.append(
+            order_by_choices.append(
                 (json.dumps([column_name, False]), f"{column_name} " + __("[desc]"))
             )
-        return choices
 
-    @property
-    def verbose_map(self) -> Dict[str, str]:
-        verb_map = {"__timestamp": "Time"}
-        verb_map.update(
+        verbose_map = {"__timestamp": "Time"}
+        verbose_map.update(
             {o.metric_name: o.verbose_name or o.metric_name for o in self.metrics}
         )
-        verb_map.update(
+        verbose_map.update(
             {o.column_name: o.verbose_name or o.column_name for o in self.columns}
         )
-        return verb_map
-
-    @property
-    def data(self) -> Dict[str, Any]:
-        """Data representation of the datasource sent to the frontend"""
         return {
             # simple fields
             "id": self.id,
@@ -306,9 +288,9 @@ class BaseDatasource(
             "columns": [o.data for o in self.columns],
             "metrics": [o.data for o in self.metrics],
             # TODO deprecate, move logic to JS
-            "order_by_choices": self.order_by_choices,
+            "order_by_choices": order_by_choices,
             "owners": [owner.id for owner in self.owners],
-            "verbose_map": self.verbose_map,
+            "verbose_map": verbose_map,
             "select_star": self.select_star,
         }
 

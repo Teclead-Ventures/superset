@@ -158,9 +158,11 @@ export const EmptyStateBig = ({
   <EmptyStateContainer className={className}>
     {image && <ImageContainer image={image} size={EmptyStateSize.Big} />}
     <TextContainer
-      css={(theme: SupersetTheme) => css`
-        max-width: ${theme.gridUnit * 150}px;
-      `}
+      css={(theme: SupersetTheme) =>
+        css`
+          max-width: ${theme.gridUnit * 150}px;
+        `
+      }
     >
       <BigTitle>{title}</BigTitle>
       {description && <BigDescription>{description}</BigDescription>}
@@ -187,9 +189,11 @@ export const EmptyStateMedium = ({
   <EmptyStateContainer>
     {image && <ImageContainer image={image} size={EmptyStateSize.Medium} />}
     <TextContainer
-      css={(theme: SupersetTheme) => css`
-        max-width: ${theme.gridUnit * 100}px;
-      `}
+      css={(theme: SupersetTheme) =>
+        css`
+          max-width: ${theme.gridUnit * 100}px;
+        `
+      }
     >
       <Title>{title}</Title>
       {description && <Description>{description}</Description>}
@@ -214,9 +218,11 @@ export const EmptyStateSmall = ({
   <EmptyStateContainer>
     {image && <ImageContainer image={image} size={EmptyStateSize.Small} />}
     <TextContainer
-      css={(theme: SupersetTheme) => css`
-        max-width: ${theme.gridUnit * 75}px;
-      `}
+      css={(theme: SupersetTheme) =>
+        css`
+          max-width: ${theme.gridUnit * 75}px;
+        `
+      }
     >
       <Title>{title}</Title>
       {description && <SmallDescription>{description}</SmallDescription>}

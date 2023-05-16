@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseReportScheduleCommand(BaseCommand):
+
     _properties: Dict[str, Any]
 
     def run(self) -> Any:

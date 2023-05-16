@@ -17,46 +17,54 @@
  * under the License.
  */
 import React from 'react';
-import { act } from 'react-dom/test-utils';
+import { mount } from 'enzyme';
 import { fireEvent, render, waitFor } from 'spec/helpers/testing-library';
+import { supersetTheme, ThemeProvider } from '@superset-ui/core';
+import { Provider } from 'react-redux';
+import thunk from 'redux-thunk';
+import configureStore from 'redux-mock-store';
 import fetchMock from 'fetch-mock';
-import { reducers } from 'src/SqlLab/reducers';
+import {
+  SQL_EDITOR_GUTTER_HEIGHT,
+  SQL_EDITOR_GUTTER_MARGIN,
+  SQL_TOOLBAR_HEIGHT,
+} from 'src/SqlLab/constants';
+import AceEditorWrapper from 'src/SqlLab/components/AceEditorWrapper';
+import SouthPane from 'src/SqlLab/components/SouthPane';
 import SqlEditor from 'src/SqlLab/components/SqlEditor';
-import { setupStore } from 'src/views/store';
+import QueryProvider from 'src/views/QueryProvider';
+import waitForComponentToPaint from 'spec/helpers/waitForComponentToPaint';
 import {
   initialState,
   queries,
   table,
   defaultQueryEditor,
 } from 'src/SqlLab/fixtures';
-import SqlEditorLeftBar from 'src/SqlLab/components/SqlEditorLeftBar';
-import { api } from 'src/hooks/apiResources/queryApi';
 
 jest.mock('src/components/AsyncAceEditor', () => ({
   ...jest.requireActual('src/components/AsyncAceEditor'),
-  FullSQLEditor: ({ onChange, onBlur, value }) => (
-    <textarea
-      data-test="react-ace"
-      onChange={evt => onChange(evt.target.value)}
-      onBlur={onBlur}
-      value={value}
-    />
+  FullSQLEditor: props => (
+    <div data-test="react-ace">{JSON.stringify(props)}</div>
   ),
 }));
-jest.mock('src/SqlLab/components/SqlEditorLeftBar', () => jest.fn());
+jest.mock('src/SqlLab/components/SqlEditorLeftBar', () => () => (
+  <div data-test="mock-sql-editor-left-bar" />
+));
+
+const MOCKED_SQL_EDITOR_HEIGHT = 500;
 
 fetchMock.get('glob:*/api/v1/database/*', { result: [] });
 fetchMock.get('glob:*/api/v1/database/*/tables/*', { options: [] });
 fetchMock.post('glob:*/sqllab/execute/*', { result: [] });
 
-let store;
-let actions;
-const mockInitialState = {
+const middlewares = [thunk];
+const mockStore = configureStore(middlewares);
+const store = mockStore({
   ...initialState,
   sqlLab: {
     ...initialState.sqlLab,
     databases: {
-      1991: {
+      dbid1: {
         allow_ctas: false,
         allow_cvas: false,
         allow_dml: false,
@@ -71,32 +79,15 @@ const mockInitialState = {
     },
     unsavedQueryEditor: {
       id: defaultQueryEditor.id,
-      dbId: 1991,
+      dbId: 'dbid1',
     },
   },
-};
+});
 
 const setup = (props = {}, store) =>
   render(<SqlEditor {...props} />, {
     useRedux: true,
     ...(store && { store }),
-  });
-
-const logAction = () => next => action => {
-  if (typeof action === 'function') {
-    return next(action);
-  }
-  actions.push(action);
-  return next(action);
-};
-
-const createStore = initState =>
-  setupStore({
-    disableDegugger: true,
-    initialState: initState,
-    rootReducers: reducers,
-    middleware: getDefaultMiddleware =>
-      getDefaultMiddleware().concat(api.middleware, logAction),
   });
 
 describe('SqlEditor', () => {
@@ -112,21 +103,18 @@ describe('SqlEditor', () => {
     displayLimit: 100,
   };
 
-  beforeEach(() => {
-    store = createStore(mockInitialState);
-    actions = [];
-
-    SqlEditorLeftBar.mockClear();
-    SqlEditorLeftBar.mockImplementation(() => (
-      <div data-test="mock-sql-editor-left-bar" />
-    ));
-  });
-
-  afterEach(() => {
-    act(() => {
-      store.dispatch(api.util.resetApiState());
-    });
-  });
+  const buildWrapper = (props = {}) =>
+    mount(
+      <QueryProvider>
+        <Provider store={store}>
+          <SqlEditor {...mockedProps} {...props} />
+        </Provider>
+      </QueryProvider>,
+      {
+        wrappingComponent: ThemeProvider,
+        wrappingComponentProps: { theme: supersetTheme },
+      },
+    );
 
   it('does not render SqlEditor if no db selected', async () => {
     const queryEditor = initialState.sqlLab.queryEditors[1];
@@ -148,48 +136,40 @@ describe('SqlEditor', () => {
     expect(await findByTestId('react-ace')).toBeInTheDocument();
   });
 
-  it('avoids rerendering EditorLeftBar while typing', async () => {
-    const { findByTestId } = setup(mockedProps, store);
-    const editor = await findByTestId('react-ace');
-    const sql = 'select *';
-    const renderCount = SqlEditorLeftBar.mock.calls.length;
-    expect(SqlEditorLeftBar).toHaveBeenCalledTimes(renderCount);
-    fireEvent.change(editor, { target: { value: sql } });
-    // Verify the rendering regression
-    expect(SqlEditorLeftBar).toHaveBeenCalledTimes(renderCount);
-  });
-
   it('renders sql from unsaved change', async () => {
     const expectedSql = 'SELECT updated_column\nFROM updated_table\nWHERE';
-    store = createStore({
-      ...initialState,
-      sqlLab: {
-        ...initialState.sqlLab,
-        databases: {
-          2023: {
-            allow_ctas: false,
-            allow_cvas: false,
-            allow_dml: false,
-            allow_file_upload: false,
-            allow_run_async: false,
-            backend: 'postgresql',
-            database_name: 'examples',
-            expose_in_sqllab: true,
-            force_ctas_schema: null,
-            id: 1,
+    const { findByTestId } = setup(
+      mockedProps,
+      mockStore({
+        ...initialState,
+        sqlLab: {
+          ...initialState.sqlLab,
+          databases: {
+            dbid1: {
+              allow_ctas: false,
+              allow_cvas: false,
+              allow_dml: false,
+              allow_file_upload: false,
+              allow_run_async: false,
+              backend: 'postgresql',
+              database_name: 'examples',
+              expose_in_sqllab: true,
+              force_ctas_schema: null,
+              id: 1,
+            },
+          },
+          unsavedQueryEditor: {
+            id: defaultQueryEditor.id,
+            dbId: 'dbid1',
+            sql: expectedSql,
           },
         },
-        unsavedQueryEditor: {
-          id: defaultQueryEditor.id,
-          dbId: 2023,
-          sql: expectedSql,
-        },
-      },
-    });
-    const { findByTestId } = setup(mockedProps, store);
+      }),
+    );
 
-    const editor = await findByTestId('react-ace');
-    expect(editor).toHaveValue(expectedSql);
+    expect(await findByTestId('react-ace')).toHaveTextContent(
+      JSON.stringify({ value: expectedSql }).slice(1, -1),
+    );
   });
 
   it('render a SouthPane', async () => {
@@ -200,7 +180,7 @@ describe('SqlEditor', () => {
   });
 
   it('runs query action with ctas false', async () => {
-    store = createStore({
+    const expectedStore = mockStore({
       ...initialState,
       sqlLab: {
         ...initialState.sqlLab,
@@ -225,11 +205,11 @@ describe('SqlEditor', () => {
         },
       },
     });
-    const { findByTestId } = setup(mockedProps, store);
+    const { findByTestId } = setup(mockedProps, expectedStore);
     const runButton = await findByTestId('run-query-action');
     fireEvent.click(runButton);
     await waitFor(() =>
-      expect(actions).toContainEqual({
+      expect(expectedStore.getActions()).toContainEqual({
         type: 'START_QUERY',
         query: expect.objectContaining({
           ctas: false,
@@ -237,6 +217,34 @@ describe('SqlEditor', () => {
         }),
       }),
     );
+  });
+
+  // TODO eschutho convert tests to RTL
+  // eslint-disable-next-line jest/no-disabled-tests
+  it.skip('does not overflow the editor window', async () => {
+    const wrapper = buildWrapper();
+    await waitForComponentToPaint(wrapper);
+    const totalSize =
+      parseFloat(wrapper.find(AceEditorWrapper).props().height) +
+      wrapper.find(SouthPane).props().height +
+      SQL_TOOLBAR_HEIGHT +
+      SQL_EDITOR_GUTTER_MARGIN * 2 +
+      SQL_EDITOR_GUTTER_HEIGHT;
+    expect(totalSize).toEqual(MOCKED_SQL_EDITOR_HEIGHT);
+  });
+
+  // eslint-disable-next-line jest/no-disabled-tests
+  it.skip('does not overflow the editor window after resizing', async () => {
+    const wrapper = buildWrapper();
+    wrapper.setState({ height: 450 });
+    await waitForComponentToPaint(wrapper);
+    const totalSize =
+      parseFloat(wrapper.find(AceEditorWrapper).props().height) +
+      wrapper.find(SouthPane).props().height +
+      SQL_TOOLBAR_HEIGHT +
+      SQL_EDITOR_GUTTER_MARGIN * 2 +
+      SQL_EDITOR_GUTTER_HEIGHT;
+    expect(totalSize).toEqual(450);
   });
 
   it('render a Limit Dropdown', async () => {

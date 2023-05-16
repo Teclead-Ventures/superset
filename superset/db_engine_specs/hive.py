@@ -96,9 +96,7 @@ class HiveEngineSpec(PrestoEngineSpec):
     engine_name = "Apache Hive"
     max_column_name_length = 767
     allows_alias_to_source_column = True
-    allows_hidden_orderby_agg = False
-
-    supports_dynamic_schema = True
+    allows_hidden_ordeby_agg = False
 
     # When running `SHOW FUNCTIONS`, what is the name of the column with the
     # function names?
@@ -124,7 +122,7 @@ class HiveEngineSpec(PrestoEngineSpec):
     jobs_stats_r = re.compile(r".*INFO.*Total jobs = (?P<max_jobs>[0-9]+)")
     # 17/02/07 19:37:08 INFO ql.Driver: Launching Job 2 out of 5
     launching_job_r = re.compile(
-        ".*INFO.*Launching Job (?P<job_number>[0-9]+) out of (?P<max_jobs>[0-9]+)"
+        ".*INFO.*Launching Job (?P<job_number>[0-9]+) out of " "(?P<max_jobs>[0-9]+)"
     )
     # 17/02/07 19:36:58 INFO exec.Task: 2017-02-07 19:36:58,152 Stage-18
     # map = 0%,  reduce = 0%
@@ -193,6 +191,7 @@ class HiveEngineSpec(PrestoEngineSpec):
             raise SupersetException("Append operation not currently supported")
 
         if to_sql_kwargs["if_exists"] == "fail":
+
             # Ensure table doesn't already exist.
             if table.schema:
                 table_exists = not database.get_df(
@@ -260,28 +259,13 @@ class HiveEngineSpec(PrestoEngineSpec):
         return None
 
     @classmethod
-    def adjust_engine_params(
-        cls,
-        uri: URL,
-        connect_args: Dict[str, Any],
-        catalog: Optional[str] = None,
-        schema: Optional[str] = None,
-    ) -> Tuple[URL, Dict[str, Any]]:
-        if schema:
-            uri = uri.set(database=parse.quote(schema, safe=""))
+    def adjust_database_uri(
+        cls, uri: URL, selected_schema: Optional[str] = None
+    ) -> URL:
+        if selected_schema:
+            uri = uri.set(database=parse.quote(selected_schema, safe=""))
 
-        return uri, connect_args
-
-    @classmethod
-    def get_schema_from_engine_params(
-        cls,
-        sqlalchemy_uri: URL,
-        connect_args: Dict[str, Any],
-    ) -> Optional[str]:
-        """
-        Return the configured schema.
-        """
-        return parse.unquote(sqlalchemy_uri.database)
+        return uri
 
     @classmethod
     def _extract_error_message(cls, ex: Exception) -> str:
@@ -441,7 +425,7 @@ class HiveEngineSpec(PrestoEngineSpec):
         return BaseEngineSpec._get_fields(cols)  # pylint: disable=protected-access
 
     @classmethod
-    def latest_sub_partition(  # type: ignore
+    def latest_sub_partition(
         cls, table_name: str, schema: Optional[str], database: "Database", **kwargs: Any
     ) -> str:
         # TODO(bogdan): implement`
@@ -461,8 +445,6 @@ class HiveEngineSpec(PrestoEngineSpec):
     def _partition_query(  # pylint: disable=too-many-arguments
         cls,
         table_name: str,
-        schema: Optional[str],
-        indexes: List[Dict[str, Any]],
         database: "Database",
         limit: int = 0,
         order_by: Optional[List[Tuple[str, bool]]] = None,
@@ -509,7 +491,7 @@ class HiveEngineSpec(PrestoEngineSpec):
         :param username: Effective username
         """
         # Do nothing in the URL object since instead this should modify
-        # the configuration dictionary. See get_configuration_for_impersonation
+        # the configuraiton dictionary. See get_configuration_for_impersonation
         return url
 
     @classmethod

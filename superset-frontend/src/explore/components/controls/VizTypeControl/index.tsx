@@ -56,9 +56,11 @@ function VizSupportValidation({ vizType }: { vizType: string }) {
   return (
     <div
       className="text-danger"
-      css={(theme: SupersetTheme) => css`
-        margin-top: ${theme.gridUnit}px;
-      `}
+      css={(theme: SupersetTheme) =>
+        css`
+          margin-top: ${theme.gridUnit}px;
+        `
+      }
     >
       <i className="fa fa-exclamation-circle text-danger" />{' '}
       <small>{t('This visualization type is not supported.')}</small>
@@ -112,13 +114,15 @@ const VizTypeControl = ({
         {initialValue && <VizSupportValidation vizType={initialValue} />}
       </div>
       <div
-        css={(theme: SupersetTheme) => css`
-          display: flex;
-          justify-content: flex-end;
-          margin-top: ${theme.gridUnit * 3}px;
-          color: ${theme.colors.grayscale.base};
-          text-decoration: underline;
-        `}
+        css={(theme: SupersetTheme) =>
+          css`
+            display: flex;
+            justify-content: flex-end;
+            margin-top: ${theme.gridUnit * 3}px;
+            color: ${theme.colors.grayscale.base};
+            text-decoration: underline;
+          `
+        }
       >
         <span role="button" tabIndex={0} onClick={openModal}>
           {t('View all charts')}

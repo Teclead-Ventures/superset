@@ -24,13 +24,7 @@ import Card from 'src/components/Card';
 import Alert from 'src/components/Alert';
 import Badge from 'src/components/Badge';
 import shortid from 'shortid';
-import {
-  FeatureFlag,
-  styled,
-  SupersetClient,
-  t,
-  withTheme,
-} from '@superset-ui/core';
+import { styled, SupersetClient, t, withTheme } from '@superset-ui/core';
 import { Select, AsyncSelect, Row, Col } from 'src/components';
 import { FormLabel } from 'src/components/Form';
 import Button from 'src/components/Button';
@@ -48,7 +42,7 @@ import TextControl from 'src/explore/components/controls/TextControl';
 import TextAreaControl from 'src/explore/components/controls/TextAreaControl';
 import SpatialControl from 'src/explore/components/controls/SpatialControl';
 import withToasts from 'src/components/MessageToasts/withToasts';
-import { isFeatureEnabled } from 'src/featureFlags';
+import { FeatureFlag, isFeatureEnabled } from 'src/featureFlags';
 import Icons from 'src/components/Icons';
 import CollectionTable from './CollectionTable';
 import Fieldset from './Fieldset';
@@ -944,7 +938,7 @@ class DatasourceEditor extends React.PureComponent {
           fieldKey="cache_timeout"
           label={t('Cache timeout')}
           description={t(
-            'The duration of time in seconds before the cache is invalidated. Set to -1 to bypass the cache.',
+            'The duration of time in seconds before the cache is invalidated',
           )}
           control={<TextControl controlId="cache_timeout" />}
         />

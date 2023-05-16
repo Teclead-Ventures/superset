@@ -25,7 +25,6 @@ import {
   makeApi,
 } from '@superset-ui/core';
 import { Dispatch } from 'redux';
-import { cloneDeep } from 'lodash';
 import {
   SET_DATA_MASK_FOR_FILTER_CONFIG_FAIL,
   setDataMaskForFilterConfigComplete,
@@ -190,7 +189,7 @@ export const setInScopeStatusOfFilters =
       filterConfig: filtersWithScopes,
     });
     // need to update native_filter_configuration in the dashboard metadata
-    const metadata = cloneDeep(getState().dashboardInfo.metadata);
+    const { metadata } = getState().dashboardInfo;
     const filterConfig: FilterConfiguration =
       metadata.native_filter_configuration;
     const mergedFilterConfig = filterConfig.map(filter => {
@@ -395,23 +394,6 @@ export function unsetHoveredNativeFilter(): UnsetHoveredNativeFilter {
   };
 }
 
-export const UPDATE_CASCADE_PARENT_IDS = 'UPDATE_CASCADE_PARENT_IDS';
-export interface UpdateCascadeParentIds {
-  type: typeof UPDATE_CASCADE_PARENT_IDS;
-  id: string;
-  parentIds: string[];
-}
-export function updateCascadeParentIds(
-  id: string,
-  parentIds: string[],
-): UpdateCascadeParentIds {
-  return {
-    type: UPDATE_CASCADE_PARENT_IDS,
-    id,
-    parentIds,
-  };
-}
-
 export type AnyFilterAction =
   | SetFilterConfigBegin
   | SetFilterConfigComplete
@@ -433,5 +415,4 @@ export type AnyFilterAction =
   | DeleteFilterSetFail
   | UpdateFilterSetBegin
   | UpdateFilterSetComplete
-  | UpdateFilterSetFail
-  | UpdateCascadeParentIds;
+  | UpdateFilterSetFail;

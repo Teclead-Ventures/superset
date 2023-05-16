@@ -27,7 +27,6 @@ import {
   Behavior,
   ChartDataResponseResult,
   Column,
-  FeatureFlag,
   Filter,
   GenericDataType,
   getChartMetadataRegistry,
@@ -35,6 +34,7 @@ import {
   NativeFilterType,
   styled,
   SupersetApiError,
+  SupersetClient,
   t,
 } from '@superset-ui/core';
 import { isEqual } from 'lodash';
@@ -46,7 +46,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import rison from 'rison';
 import { PluginFilterSelectCustomizeProps } from 'src/filters/components/Select/types';
 import { useSelector } from 'react-redux';
 import { getChartDataRequest } from 'src/components/Chart/chartAction';
@@ -61,7 +60,6 @@ import { addDangerToast } from 'src/components/MessageToasts/actions';
 import { Radio } from 'src/components/Radio';
 import Tabs from 'src/components/Tabs';
 import { Tooltip } from 'src/components/Tooltip';
-import { cachedSupersetGet } from 'src/utils/cachedSupersetGet';
 import {
   Chart,
   ChartsState,
@@ -70,8 +68,9 @@ import {
 } from 'src/dashboard/types';
 import DateFilterControl from 'src/explore/components/controls/DateFilterControl';
 import AdhocFilterControl from 'src/explore/components/controls/FilterControl/AdhocFilterControl';
-import { isFeatureEnabled } from 'src/featureFlags';
+import { FeatureFlag, isFeatureEnabled } from 'src/featureFlags';
 import { waitForAsyncData } from 'src/middleware/asyncEvent';
+import { cacheWrapper } from 'src/utils/cacheWrapper';
 import { ClientErrorObject } from 'src/utils/getClientErrorObject';
 import { SingleValueType } from 'src/filters/components/Range/SingleValueType';
 import {
@@ -92,12 +91,12 @@ import getControlItemsMap from './getControlItemsMap';
 import RemovedFilter from './RemovedFilter';
 import { useBackendFormUpdate, useDefaultValue } from './state';
 import {
+  FILTER_SUPPORTED_TYPES,
   hasTemporalColumns,
   mostUsedDataset,
   setNativeFilterFieldValues,
   useForceUpdate,
 } from './utils';
-import { FILTER_SUPPORTED_TYPES, INPUT_WIDTH } from './constants';
 import DependencyList from './DependencyList';
 
 const TabPane = styled(Tabs.TabPane)`
@@ -300,9 +299,7 @@ export interface FiltersConfigFormProps {
   removedFilters: Record<string, FilterRemoval>;
   restoreFilter: (filterId: string) => void;
   form: FormInstance<NativeFiltersForm>;
-  getAvailableFilters: (
-    filterId: string,
-  ) => { label: string; value: string; type: string | undefined }[];
+  getAvailableFilters: (filterId: string) => { label: string; value: string }[];
   handleActiveFilterPanelChange: (activeFilterPanel: string | string[]) => void;
   activeFilterPanelKeys: string | string[];
   isActive: boolean;
@@ -322,6 +319,14 @@ const FILTER_TYPE_NAME_MAPPING = {
   [t('Time grain')]: t('Time grain'),
   [t('Group By')]: t('Group by'),
 };
+
+const localCache = new Map<string, any>();
+
+const cachedSupersetGet = cacheWrapper(
+  SupersetClient.get,
+  localCache,
+  ({ endpoint }) => endpoint || '',
+);
 
 /**
  * The configuration form for a specific filter.
@@ -363,7 +368,7 @@ const FiltersConfigForm = (
   const formFilter = formValues || undoFormValues || defaultFormFilter;
 
   const dependencies: string[] =
-    formFilter?.dependencies || filterToEdit?.cascadeParentIds || [];
+    formFilter?.dependencies || filterToEdit?.cascadeParentIds;
 
   const nativeFilterItems = getChartMetadataRegistry().items;
   const nativeFilterVizTypes = Object.entries(nativeFilterItems)
@@ -649,35 +654,11 @@ const FiltersConfigForm = (
 
   const availableFilters = getAvailableFilters(filterId);
   const hasAvailableFilters = availableFilters.length > 0;
-  const hasTimeDependency = availableFilters
-    .filter(filter => filter.type === 'filter_time')
-    .some(filter => dependencies?.includes(filter.value));
 
   useEffect(() => {
     if (datasetId) {
       cachedSupersetGet({
-        endpoint: `/api/v1/dataset/${datasetId}?q=${rison.encode({
-          columns: [
-            'columns.column_name',
-            'columns.expression',
-            'columns.filterable',
-            'columns.is_dttm',
-            'columns.type',
-            'columns.verbose_name',
-            'database.id',
-            'database.database_name',
-            'datasource_type',
-            'filter_select_enabled',
-            'id',
-            'is_sqllab_view',
-            'main_dttm_col',
-            'metrics.metric_name',
-            'metrics.verbose_name',
-            'schema',
-            'sql',
-            'table_name',
-          ],
-        })}`,
+        endpoint: `/api/v1/dataset/${datasetId}`,
       })
         .then((response: JsonResponse) => {
           setMetrics(response.json?.result?.metrics);
@@ -754,42 +735,6 @@ const FiltersConfigForm = (
   if (isRemoved) {
     return <RemovedFilter onClick={() => restoreFilter(filterId)} />;
   }
-
-  const timeColumn = (
-    <StyledRowFormItem
-      name={['filters', filterId, 'granularity_sqla']}
-      label={
-        <>
-          <StyledLabel>{t('Time column')}</StyledLabel>&nbsp;
-          <InfoTooltipWithTrigger
-            placement="top"
-            tooltip={
-              hasTimeDependency
-                ? t('Time column to apply dependent temporal filter to')
-                : t('Time column to apply time range to')
-            }
-          />
-        </>
-      }
-      initialValue={filterToEdit?.granularity_sqla}
-    >
-      <ColumnSelect
-        allowClear
-        form={form}
-        formField="granularity_sqla"
-        filterId={filterId}
-        filterValues={(column: Column) => !!column.is_dttm}
-        datasetId={datasetId}
-        onChange={column => {
-          // We need reset default value when when column changed
-          setNativeFilterFieldValues(form, filterId, {
-            granularity_sqla: column,
-          });
-          forceUpdate();
-        }}
-      />
-    </StyledRowFormItem>
-  );
 
   return (
     <StyledTabs
@@ -947,9 +892,7 @@ const FiltersConfigForm = (
                     getDependencySuggestion={() =>
                       getDependencySuggestion(filterId)
                     }
-                  >
-                    {hasTimeDependency ? timeColumn : undefined}
-                  </DependencyList>
+                  />
                 </StyledRowFormItem>
               )}
               {hasDataset && hasAdditionalFilters && (
@@ -957,11 +900,6 @@ const FiltersConfigForm = (
                   <CollapsibleControl
                     initialValue={hasPreFilter}
                     title={t('Pre-filter available values')}
-                    tooltip={t(`Add filter clauses to control the filter's source query,
-                    though only in the context of the autocomplete i.e., these conditions
-                    do not impact how the filter is applied to the dashboard. This is useful
-                    when you want to improve the query's performance by only scanning a subset
-                    of the underlying data or limit the available values displayed in the filter.`)}
                     onChange={checked => {
                       formChanged();
                       if (checked) {
@@ -971,7 +909,6 @@ const FiltersConfigForm = (
                   >
                     <StyledRowSubFormItem
                       name={['filters', filterId, 'adhoc_filters']}
-                      css={{ width: INPUT_WIDTH }}
                       initialValue={filterToEdit?.adhoc_filters}
                       required
                       rules={[
@@ -1029,9 +966,39 @@ const FiltersConfigForm = (
                         />
                       </StyledRowFormItem>
                     )}
-                    {hasTimeRange && !hasTimeDependency
-                      ? timeColumn
-                      : undefined}
+                    {hasTimeRange && (
+                      <StyledRowFormItem
+                        name={['filters', filterId, 'granularity_sqla']}
+                        label={
+                          <>
+                            <StyledLabel>{t('Time column')}</StyledLabel>&nbsp;
+                            <InfoTooltipWithTrigger
+                              placement="top"
+                              tooltip={t(
+                                'Optional time column if time range should apply to another column than the default time column',
+                              )}
+                            />
+                          </>
+                        }
+                        initialValue={filterToEdit?.granularity_sqla}
+                      >
+                        <ColumnSelect
+                          allowClear
+                          form={form}
+                          formField="granularity_sqla"
+                          filterId={filterId}
+                          filterValues={(column: Column) => !!column.is_dttm}
+                          datasetId={datasetId}
+                          onChange={column => {
+                            // We need reset default value when when column changed
+                            setNativeFilterFieldValues(form, filterId, {
+                              granularity_sqla: column,
+                            });
+                            forceUpdate();
+                          }}
+                        />
+                      </StyledRowFormItem>
+                    )}
                   </CollapsibleControl>
                 </CleanFormItem>
               )}
@@ -1221,41 +1188,39 @@ const FiltersConfigForm = (
                       },
                     ]}
                   >
-                    {error || showDefaultValue ? (
+                    {error ? (
+                      <BasicErrorAlert
+                        title={t('Cannot load filter')}
+                        body={error}
+                        level="error"
+                      />
+                    ) : showDefaultValue ? (
                       <DefaultValueContainer>
-                        {error ? (
-                          <BasicErrorAlert
-                            title={t('Cannot load filter')}
-                            body={error}
-                            level="error"
-                          />
-                        ) : (
-                          <DefaultValue
-                            setDataMask={dataMask => {
-                              if (
-                                !isEqual(
-                                  initialDefaultValue?.filterState?.value,
-                                  dataMask?.filterState?.value,
-                                )
-                              ) {
-                                formChanged();
-                              }
-                              setNativeFilterFieldValues(form, filterId, {
-                                defaultDataMask: dataMask,
-                              });
-                              form.validateFields([
-                                ['filters', filterId, 'defaultDataMask'],
-                              ]);
-                              forceUpdate();
-                            }}
-                            hasDefaultValue={hasDefaultValue}
-                            filterId={filterId}
-                            hasDataset={hasDataset}
-                            form={form}
-                            formData={newFormData}
-                            enableNoResults={enableNoResults}
-                          />
-                        )}
+                        <DefaultValue
+                          setDataMask={dataMask => {
+                            if (
+                              !isEqual(
+                                initialDefaultValue?.filterState?.value,
+                                dataMask?.filterState?.value,
+                              )
+                            ) {
+                              formChanged();
+                            }
+                            setNativeFilterFieldValues(form, filterId, {
+                              defaultDataMask: dataMask,
+                            });
+                            form.validateFields([
+                              ['filters', filterId, 'defaultDataMask'],
+                            ]);
+                            forceUpdate();
+                          }}
+                          hasDefaultValue={hasDefaultValue}
+                          filterId={filterId}
+                          hasDataset={hasDataset}
+                          form={form}
+                          formData={newFormData}
+                          enableNoResults={enableNoResults}
+                        />
                         {hasDataset && datasetId && (
                           <Tooltip title={t('Refresh the default values')}>
                             <RefreshIcon onClick={() => refreshHandler(true)} />

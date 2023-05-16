@@ -93,7 +93,6 @@ class TestBigQueryDbEngineSpec(TestDbEngineSpec):
         """
         DB Eng Specs (bigquery): Test fetch data
         """
-
         # Mock a google.cloud.bigquery.table.Row
         class Row(object):
             def __init__(self, value):
@@ -144,86 +143,70 @@ class TestBigQueryDbEngineSpec(TestDbEngineSpec):
         )
         self.assertEqual(result, expected_result)
 
-    def test_get_indexes(self):
-        database = mock.Mock()
-        inspector = mock.Mock()
-        schema = "foo"
-        table_name = "bar"
+    def test_normalize_indexes(self):
+        """
+        DB Eng Specs (bigquery): Test extra table metadata
+        """
+        indexes = [{"name": "partition", "column_names": [None], "unique": False}]
+        normalized_idx = BigQueryEngineSpec.normalize_indexes(indexes)
+        self.assertEqual(normalized_idx, [])
 
-        inspector.get_indexes = mock.Mock(
-            return_value=[
-                {
-                    "name": "partition",
-                    "column_names": [None],
-                    "unique": False,
-                }
-            ]
-        )
+        indexes = [{"name": "partition", "column_names": ["dttm"], "unique": False}]
+        normalized_idx = BigQueryEngineSpec.normalize_indexes(indexes)
+        self.assertEqual(normalized_idx, indexes)
 
-        assert (
-            BigQueryEngineSpec.get_indexes(
-                database,
-                inspector,
-                table_name,
-                schema,
-            )
-            == []
-        )
-
-        inspector.get_indexes = mock.Mock(
-            return_value=[
-                {
-                    "name": "partition",
-                    "column_names": ["dttm"],
-                    "unique": False,
-                }
-            ]
-        )
-
-        assert BigQueryEngineSpec.get_indexes(
-            database,
-            inspector,
-            table_name,
-            schema,
-        ) == [
-            {
-                "name": "partition",
-                "column_names": ["dttm"],
-                "unique": False,
-            }
+        indexes = [
+            {"name": "partition", "column_names": ["dttm", None], "unique": False}
         ]
-
-        inspector.get_indexes = mock.Mock(
-            return_value=[
-                {
-                    "name": "partition",
-                    "column_names": ["dttm", None],
-                    "unique": False,
-                }
-            ]
+        normalized_idx = BigQueryEngineSpec.normalize_indexes(indexes)
+        self.assertEqual(
+            normalized_idx,
+            [{"name": "partition", "column_names": ["dttm"], "unique": False}],
         )
-
-        assert BigQueryEngineSpec.get_indexes(
-            database,
-            inspector,
-            table_name,
-            schema,
-        ) == [
-            {
-                "name": "partition",
-                "column_names": ["dttm"],
-                "unique": False,
-            }
-        ]
 
     @mock.patch("superset.db_engine_specs.bigquery.BigQueryEngineSpec.get_engine")
-    @mock.patch("superset.db_engine_specs.bigquery.pandas_gbq")
-    @mock.patch("superset.db_engine_specs.bigquery.service_account")
-    def test_df_to_sql(self, mock_service_account, mock_pandas_gbq, mock_get_engine):
+    def test_df_to_sql(self, mock_get_engine):
         """
         DB Eng Specs (bigquery): Test DataFrame to SQL contract
         """
-        mock_service_account.Credentials.from_service_account_info = mock.MagicMock(
+        # test missing google.oauth2 dependency
+        sys.modules["pandas_gbq"] = mock.MagicMock()
+        df = DataFrame()
+        database = mock.MagicMock()
+        with self.assertRaises(Exception):
+            BigQueryEngineSpec.df_to_sql(
+                database=database,
+                table=Table(table="name", schema="schema"),
+                df=df,
+                to_sql_kwargs={},
+            )
+
+        invalid_kwargs = [
+            {"name": "some_name"},
+            {"schema": "some_schema"},
+            {"con": "some_con"},
+            {"name": "some_name", "con": "some_con"},
+            {"name": "some_name", "schema": "some_schema"},
+            {"con": "some_con", "schema": "some_schema"},
+        ]
+        # Test check for missing schema.
+        sys.modules["google.oauth2"] = mock.MagicMock()
+        for invalid_kwarg in invalid_kwargs:
+            self.assertRaisesRegex(
+                Exception,
+                "The table schema must be defined",
+                BigQueryEngineSpec.df_to_sql,
+                database=database,
+                table=Table(table="name"),
+                df=df,
+                to_sql_kwargs=invalid_kwarg,
+            )
+
+        import pandas_gbq
+        from google.oauth2 import service_account
+
+        pandas_gbq.to_gbq = mock.Mock()
+        service_account.Credentials.from_service_account_info = mock.MagicMock(
             return_value="account_info"
         )
 
@@ -232,8 +215,6 @@ class TestBigQueryDbEngineSpec(TestDbEngineSpec):
             "secrets"
         )
 
-        df = DataFrame()
-        database = mock.MagicMock()
         BigQueryEngineSpec.df_to_sql(
             database=database,
             table=Table(table="name", schema="schema"),
@@ -241,7 +222,7 @@ class TestBigQueryDbEngineSpec(TestDbEngineSpec):
             to_sql_kwargs={"if_exists": "extra_key"},
         )
 
-        mock_pandas_gbq.to_gbq.assert_called_with(
+        pandas_gbq.to_gbq.assert_called_with(
             df,
             project_id="google-host",
             destination_table="schema.name",

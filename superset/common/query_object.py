@@ -360,7 +360,7 @@ class QueryObject:  # pylint: disable=too-many-instance-attributes
 
         # TODO: the below KVs can all be cleaned up and moved to `to_dict()` at some
         #  predetermined point in time when orgs are aware that the previously
-        #  cached results will be invalidated.
+        #  chached results will be invalidated.
         if not self.apply_fetch_values_predicate:
             del cache_dict["apply_fetch_values_predicate"]
         if self.datasource:
@@ -397,24 +397,22 @@ class QueryObject:  # pylint: disable=too-many-instance-attributes
             cache_dict["annotation_layers"] = annotation_layers
 
         # Add an impersonation key to cache if impersonation is enabled on the db
-        # or if the CACHE_QUERY_BY_USER flag is on
-        try:
-            database = self.datasource.database  # type: ignore
-            if (
-                feature_flag_manager.is_feature_enabled("CACHE_IMPERSONATION")
-                and database.impersonate_user
-            ) or feature_flag_manager.is_feature_enabled("CACHE_QUERY_BY_USER"):
-                if key := database.db_engine_spec.get_impersonation_key(
-                    getattr(g, "user", None)
-                ):
-                    logger.debug(
-                        "Adding impersonation key to QueryObject cache dict: %s", key
-                    )
+        if (
+            feature_flag_manager.is_feature_enabled("CACHE_IMPERSONATION")
+            and self.datasource
+            and hasattr(self.datasource, "database")
+            and self.datasource.database.impersonate_user
+        ):
 
-                    cache_dict["impersonation_key"] = key
-        except AttributeError:
-            # datasource or database do not exist
-            pass
+            if key := self.datasource.database.db_engine_spec.get_impersonation_key(
+                getattr(g, "user", None)
+            ):
+
+                logger.debug(
+                    "Adding impersonation key to QueryObject cache dict: %s", key
+                )
+
+                cache_dict["impersonation_key"] = key
 
         return md5_sha_from_dict(cache_dict, default=json_int_dttm_ser, ignore_nan=True)
 

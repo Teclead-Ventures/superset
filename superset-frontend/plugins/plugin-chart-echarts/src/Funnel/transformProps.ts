@@ -37,7 +37,6 @@ import {
 import {
   extractGroupbyLabel,
   getChartPadding,
-  getColtypesMapping,
   getLegendProps,
   sanitizeHtml,
 } from '../utils/series';
@@ -96,7 +95,7 @@ export default function transformProps(
     emitCrossFilters,
   } = chartProps;
   const data: DataRecord[] = queriesData[0].data || [];
-  const coltypeMapping = getColtypesMapping(queriesData[0]);
+
   const {
     colorScheme,
     groupby,
@@ -227,7 +226,7 @@ export default function transformProps(
         }),
     },
     legend: {
-      ...getLegendProps(legendType, legendOrientation, showLegend, theme),
+      ...getLegendProps(legendType, legendOrientation, showLegend),
       data: keys,
     },
     series,
@@ -245,6 +244,5 @@ export default function transformProps(
     selectedValues,
     onContextMenu,
     refs,
-    coltypeMapping,
   };
 }
